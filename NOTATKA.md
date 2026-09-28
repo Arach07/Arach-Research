@@ -76,12 +76,16 @@ Dlaczego tak:
 ## 4. Workflow n8n „Raport dzienny”
 
 ```
-[Start (ręcznie)]             ─┐
-                               ├→ [Dane i tematy] → [Jeden prompt] → [Gemini] → [Jest komentarz?] ──tak──→ [Weryfikacja źródeł] → [Zapis do apki]
-[Harmonogram 9:00/14:00/20:00]─┘                                                     └─nie→ [Gemini zapasowy] ─┘
+[Start (ręcznie)] / [Harmonogram 9:00/14:00/20:00]
+   → [Dane i tematy] → [Jeden prompt]
+   → [Gemini 1 (flash-lite)] → [Jest komentarz? (1)] ──tak──→ [Weryfikacja źródeł] → [Zapis do apki]
+                                     └─nie→ [Gemini 2 (flash)] → [Jest komentarz? (2)] ──tak──↗
+                                                                      └─nie→ [Gemini 3 (3-flash)] ──↗
 ```
 
-- **Model zapasowy:** gdy główny model (`gemini-3.5-flash-lite`) nie odpowie, np. przez dzienny limit, workflow próbuje `gemini-3.5-flash`. Limit liczy się **osobno dla każdego modelu**, więc zapasowy ma własną pulę zapytań.
+- **Łańcuch 3 modeli:** gdy model nie odpowie (dzienny limit albo przeciążenie), workflow sam próbuje następnego:
+  `gemini-3.5-flash-lite`, potem `gemini-3.5-flash`, potem `gemini-3-flash-preview`. Limit liczy się **osobno dla każdego modelu**, więc każdy ma własną pulę. Gdy wszystkie trzy odmówią, raport i tak się zapisuje, bez komentarza AI.
+- Modele zmienia się w `n8n/build-workflow.mjs` w tablicy `MODELE`, a potem trzeba uruchomić `node n8n/build-workflow.mjs`.
 
 - **Model Gemini:** `models/gemini-3.5-flash-lite`. Modele `gemini-2.5-*` zwracają 404 dla nowych użytkowników, a `3-flash-preview` i `3.5-flash` były przeciążone (503).
 - **Jedno zapytanie do Gemini na cały raport** (klocek „Jeden prompt”, kod w `n8n/src/jeden-prompt.js`). Gemini odsyła JSON `{ "zloto": "...", "gpw": "...", ... }`.

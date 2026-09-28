@@ -40,6 +40,51 @@ function gemini(name, id, model, position) {
   };
 }
 
+const MODELE = [
+  { nazwa: 'Gemini 1 (flash-lite)', model: 'models/gemini-3.5-flash-lite', id: '7b0f7a1e-1111-4a6b-9c01-000000000003', ifId: '7b0f7a1e-1111-4a6b-9c01-000000000010' },
+  { nazwa: 'Gemini 2 (flash)', model: 'models/gemini-3.5-flash', id: '7b0f7a1e-1111-4a6b-9c01-000000000011', ifId: '7b0f7a1e-1111-4a6b-9c01-000000000012' },
+  { nazwa: 'Gemini 3 (3-flash)', model: 'models/gemini-3-flash-preview', id: '7b0f7a1e-1111-4a6b-9c01-000000000013' },
+];
+
+// Czy model zwrócił komentarz? wyjście 0 = tak, wyjście 1 = nie (następny model)
+function czyJestKomentarz(name, id, position) {
+  return {
+    parameters: {
+      conditions: {
+        options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+        conditions: [
+          {
+            id: id.replace('1111', '2222'),
+            leftValue: '={{ $json.mergedResponse }}',
+            rightValue: '',
+            operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+          },
+        ],
+        combinator: 'and',
+      },
+      options: {},
+    },
+    id,
+    name,
+    type: 'n8n-nodes-base.if',
+    typeVersion: 2.2,
+    position,
+  };
+}
+
+// Połączenia łańcucha: model → IF → (tak: Weryfikacja | nie: kolejny model); ostatni model → Weryfikacja
+const WERYFIKACJA = { node: 'Weryfikacja źródeł', type: 'main', index: 0 };
+const polaczeniaModeli = Object.fromEntries(
+  MODELE.flatMap((m, i) => {
+    const ifName = `Jest komentarz? (${i + 1})`;
+    if (i === MODELE.length - 1) return [[m.nazwa, { main: [[WERYFIKACJA]] }]];
+    return [
+      [m.nazwa, { main: [[{ node: ifName, type: 'main', index: 0 }]] }],
+      [ifName, { main: [[WERYFIKACJA], [{ node: MODELE[i + 1].nazwa, type: 'main', index: 0 }]] }],
+    ];
+  }),
+);
+
 const workflow = {
   name: 'Raport dzienny',
   nodes: [
@@ -79,39 +124,19 @@ const workflow = {
       typeVersion: 2,
       position: [440, 0],
     },
-    gemini('Gemini', '7b0f7a1e-1111-4a6b-9c01-000000000003', 'models/gemini-3.5-flash-lite', [660, 0]),
-    {
-      // Czy Gemini zwrócił komentarz? Jeśli nie (np. dzienny limit) — próbujemy modelu zapasowego
-      parameters: {
-        conditions: {
-          options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
-          conditions: [
-            {
-              id: '7b0f7a1e-2222-4a6b-9c01-000000000001',
-              leftValue: '={{ $json.mergedResponse }}',
-              rightValue: '',
-              operator: { type: 'string', operation: 'notEmpty', singleValue: true },
-            },
-          ],
-          combinator: 'and',
-        },
-        options: {},
-      },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000010',
-      name: 'Jest komentarz?',
-      type: 'n8n-nodes-base.if',
-      typeVersion: 2.2,
-      position: [880, 0],
-    },
-    // Limit liczy się osobno dla każdego modelu, więc zapasowy ma własną pulę zapytań
-    gemini('Gemini zapasowy', '7b0f7a1e-1111-4a6b-9c01-000000000011', 'models/gemini-3.5-flash', [1100, 200]),
+    // Łańcuch modeli: gdy jeden nie odpowie (limit/przeciążenie), próbujemy następnego.
+    // Limit darmowego Gemini liczy się osobno dla każdego modelu.
+    ...MODELE.flatMap((m, i) => [
+      gemini(m.nazwa, m.id, m.model, [660 + i * 440, i * 200]),
+      ...(i < MODELE.length - 1 ? [czyJestKomentarz(`Jest komentarz? (${i + 1})`, m.ifId, [880 + i * 440, i * 200])] : []),
+    ]),
     {
       parameters: { jsCode: src('weryfikacja-zrodel.js') },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000005',
       name: 'Weryfikacja źródeł',
       type: 'n8n-nodes-base.code',
       typeVersion: 2,
-      position: [1320, 0],
+      position: [1760, 0],
     },
     {
       parameters: {
@@ -124,7 +149,7 @@ const workflow = {
       name: 'Zapis do apki',
       type: 'n8n-nodes-base.supabase',
       typeVersion: 1,
-      position: [1540, 0],
+      position: [1980, 0],
       credentials: { supabaseApi: { name: 'Supabase account' } },
     },
   ],
@@ -132,16 +157,8 @@ const workflow = {
     Start: { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
     'Harmonogram 9/14/20': { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
     'Dane i tematy': { main: [[{ node: 'Jeden prompt', type: 'main', index: 0 }]] },
-    'Jeden prompt': { main: [[{ node: 'Gemini', type: 'main', index: 0 }]] },
-    Gemini: { main: [[{ node: 'Jest komentarz?', type: 'main', index: 0 }]] },
-    // wyjście 0 = tak (jest komentarz), wyjście 1 = nie (próbujemy zapasowego modelu)
-    'Jest komentarz?': {
-      main: [
-        [{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }],
-        [{ node: 'Gemini zapasowy', type: 'main', index: 0 }],
-      ],
-    },
-    'Gemini zapasowy': { main: [[{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }]] },
+    'Jeden prompt': { main: [[{ node: MODELE[0].nazwa, type: 'main', index: 0 }]] },
+    ...polaczeniaModeli,
     'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
   },
   settings: { executionOrder: 'v1', timezone: 'Europe/Warsaw' },
