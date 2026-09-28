@@ -1,18 +1,23 @@
 import Link from "next/link";
 import { Change } from "@/components/change";
+import { LiveBadge, LiveRefresh } from "@/components/live-refresh";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { Sparkline } from "@/components/sparkline";
 import { formatNumber } from "@/lib/format";
+import { liveQuotes, withLive } from "@/lib/quotes";
 import { MARKET_ORDER, categoryMeta, latestByCategory, recentReports } from "@/lib/reports";
 
 export default async function MarketsPage() {
-  const { reports } = await recentReports();
+  const [{ reports }, live] = await Promise.all([recentReports(), liveQuotes()]);
   const latest = latestByCategory(reports);
-  const markets = MARKET_ORDER.map((c) => latest[c]).filter(Boolean);
+  const markets = MARKET_ORDER.map((c) => latest[c])
+    .filter(Boolean)
+    .map((r) => withLive(r, live));
 
   return (
     <>
-      <PageHeader title="Rynki" subtitle="Kursy, wykresy 30 dni i pełne raporty" />
+      <LiveRefresh />
+      <PageHeader title="Rynki" subtitle="Kursy, wykresy 30 dni i pełne raporty" action={<LiveBadge at={live.fetchedAt} />} />
       {markets.length === 0 && <EmptyState>Brak danych rynkowych.</EmptyState>}
 
       <div className="space-y-5">

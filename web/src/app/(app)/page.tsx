@@ -2,31 +2,34 @@ import { logout } from "@/app/login/actions";
 import { CategoryCard } from "@/components/category-card";
 import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
+import { LiveBadge, LiveRefresh } from "@/components/live-refresh";
 import { EmptyState } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
+import { liveQuotes, mergeInstruments, withLive } from "@/lib/quotes";
 import { MARKET_ORDER, latestByCategory, recentReports } from "@/lib/reports";
 
 export default async function TodayPage() {
-  const { reports, error } = await recentReports();
+  const [{ reports, error }, live] = await Promise.all([recentReports(), liveQuotes()]);
   const latest = latestByCategory(reports);
   const summary = latest.dzien;
-  const markets = MARKET_ORDER.map((c) => latest[c]).filter(Boolean);
+  const markets = MARKET_ORDER.map((c) => latest[c])
+    .filter(Boolean)
+    .map((r) => withLive(r, live));
   const scams = latest.scamy;
 
-  // Pasek kursów: z podsumowania dnia albo pierwszy instrument z każdego tematu
-  const ticker =
-    summary?.data?.instrumenty ??
-    markets.flatMap((r) => r.data?.instrumenty?.filter((i) => !i.blad).slice(0, 1) ?? []);
+  // Pasek kursów: na żywo, a brakujące uzupełnione danymi z podsumowania dnia
+  const ticker = mergeInstruments(live.ticker, summary?.data?.instrumenty);
   const newest = reports[0]?.created_at;
 
   return (
     <div className="space-y-5">
-      <header className="flex items-end justify-between">
+      <LiveRefresh />
+      <header className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">
             <span className="gold">Research</span>
           </h1>
-          {newest && <p className="text-sm text-muted">Raport z {formatDateTime(newest)}</p>}
+          {newest && <p className="text-sm text-muted">Komentarze z raportu: {formatDateTime(newest)}</p>}
         </div>
         <form action={logout}>
           <button className="text-xs text-muted hover:text-accent">Wyloguj</button>
@@ -41,7 +44,12 @@ export default async function TodayPage() {
         <EmptyState>Brak raportów. Odpal workflow w n8n, a pierwszy raport pojawi się tutaj.</EmptyState>
       )}
 
-      {ticker.length > 0 && <Ticker instruments={ticker} />}
+      {ticker.length > 0 && (
+        <div className="space-y-2">
+          <LiveBadge at={live.fetchedAt} />
+          <Ticker instruments={ticker} />
+        </div>
+      )}
 
       {summary && (
         <section className="card card-hero p-5">

@@ -3,6 +3,7 @@ import { categoryMeta } from "@/lib/reports";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { Commentary } from "./commentary";
 import { InstrumentPanel } from "./instruments";
+import { LiveBadge } from "./live-refresh";
 import { NewsList } from "./news-list";
 import { ReportContent } from "./report-content";
 
@@ -16,7 +17,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 // Pełny raport: komentarz AI, instrumenty z wykresami, CERT, źródła
-export function ReportView({ report }: { report: Report }) {
+export function ReportView({ report, liveAt }: { report: Report; liveAt?: string }) {
   const meta = categoryMeta(report.category);
   const data = report.data;
 
@@ -52,7 +53,8 @@ export function ReportView({ report }: { report: Report }) {
       </article>
 
       {instrumenty.length > 0 && (
-        <Section title="Twarde dane">
+        <Section title={liveAt ? "Kursy" : "Twarde dane (stan z chwili raportu)"}>
+          {liveAt && <LiveBadge at={liveAt} />}
           <div className="grid gap-3 sm:grid-cols-2">
             {instrumenty.map((i) => (
               <InstrumentPanel key={i.nazwa} instrument={i} />
