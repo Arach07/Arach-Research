@@ -183,12 +183,39 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 
 ---
 
-## 7. Na później (pomysły)
-- Ekran **Ustawienia** w apce: godziny raportów, obserwowane spółki, nowe tematy bez otwierania n8n.
-- Powiadomienia push „📈 Raport gotowy”.
-- „Pokaż starsze” w Archiwum.
-- Twarde dane dla większej liczby instrumentów (srebro, ropa, EUR/PLN, pojedyncze spółki z GPW).
-- Nauka n8n w praktyce: plan z pierwszej rozmowy (n8n → RSS/API → AI → wysyłka) jest zrealizowany i rozbudowany.
+## 7. PLAN ROZBUDOWY (zdecydowane 28.09.2026, robimy WSZYSTKO, ale PÓŹNIEJ; teraz bez zmian)
+
+Kolejność do ustalenia przy starcie. Wszystko darmowe.
+
+### 7.1 Watchlista moich spółek
+- Wybrane spółki z GPW (np. `PKO.WA`, `PKN.WA`, `CDR.WA`, `KGH.WA`) i z USA (np. `NVDA`): kurs, zmiana, wykres i **newsy tylko o nich**.
+- Lista edytowana w apce (ekran Ustawienia), trzymana w Supabase; n8n czyta ją przy każdym raporcie.
+
+### 7.2 Kalendarz wydarzeń
+- Decyzje o stopach: **RPP** (PL), **Fed** (USA), **EBC**.
+- Dane makro: inflacja CPI, rynek pracy USA (NFP), PKB.
+- **Wyniki kwartalne spółek i daty dywidend** (szczególnie GPW i watchlista).
+- Źródła: darmowy tygodniowy kalendarz makro (XML) + RSS portali.
+
+### 7.3 Stopy, obligacje, waluty, surowce, sentyment
+- Stopa referencyjna **NBP**, WIBOR/WIRON, **inflacja PL** (GUS), rentowność **USA 10Y** (`^TNX`).
+- Waluty: **EUR/PLN, CHF/PLN, GBP/PLN** (NBP).
+- Surowce: **srebro, ropa Brent, gaz, miedź** (Yahoo; miedź → KGHM, ropa → Orlen).
+- Europa i Azja: **DAX, Nikkei** (poranny nastrój przed otwarciem GPW).
+- Sentyment: **VIX** (akcje), **Fear & Greed** (krypto, alternative.me).
+- Kontekst techniczny: maksimum i minimum 52 tygodni, średnie 50/200 dni, odległość od rekordu.
+
+### 7.4 Alerty push na telefon
+- Duże ruchy (np. > 2%), progi cenowe (np. WIG20 < 4000), newsy o spółkach z watchlisty, nowe scamy.
+- Web Push w PWA (Android i iPhone z apką na ekranie głównym).
+
+### 7.5 Pozostałe pomysły (z analizy)
+- **Raport poranny ≠ wieczorny:** 9:00 „co przed nami” (kalendarz, Azja, kontrakty na S&P), 20:00 „co się wydarzyło” (podsumowanie sesji, najwięksi zwycięzcy i przegrani).
+- **Mój portfel:** pozycje (ile i po ile), wartość, zysk/strata, udziały.
+- **Podsumowanie tygodnia** w niedzielę.
+- **Obligacje detaliczne** (EDO, COI) i najlepsze lokaty jako punkt odniesienia; podatek Belki, limity IKE/IKZE.
+- **Lista ostrzeżeń publicznych KNF** w scamach i w sprawdzaniu linków (nazwy firm).
+- Ekran **Ustawienia** (godziny raportów, tematy, watchlista), „Pokaż starsze” w Archiwum.
 
 Jak to działa: schemat od n8n do apki i dlaczego wybraliśmy takie rozwiązania.
 Konta i usługi: GitHub, Vercel, Supabase, Gemini i n8n, gdzie który klucz ma trafić i czego nie mylić z Home-Budget. Samych kluczy w notatce nie ma.
