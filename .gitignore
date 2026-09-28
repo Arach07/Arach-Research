@@ -1,0 +1,6 @@
+# Prywatne prompty agentów — nie są częścią apki
+Agents/
+
+node_modules/
+.env*
+!.env.local.example
