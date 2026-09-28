@@ -7,17 +7,23 @@
       "name": "Start",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Lista tematów raportu. Nowy temat = nowa pozycja na liście.\n// category musi pasować do kategorii w apce: zloto, gpw, usa, krypto, scamy, ogolny\nconst tematy = [\n  {\n    category: 'zloto',\n    title: 'Złoto',\n    prompt: 'Cena złota: aktualny poziom w USD za uncję i w PLN za gram, zmiana dzienna i tygodniowa, co napędza ruch, najnowsze prognozy banków i analityków (kto i jaki poziom).',\n  },\n  {\n    category: 'gpw',\n    title: 'GPW',\n    prompt: 'Giełda Papierów Wartościowych w Warszawie: jak zamknęły się WIG20 i WIG, najważniejsze newsy o spółkach (wyniki, dywidendy, komunikaty), największe wzrosty i spadki, rekomendacje domów maklerskich.',\n  },\n  {\n    category: 'usa',\n    title: 'Rynek USA',\n    prompt: 'Rynek akcji w USA: S&P 500, Nasdaq, Dow Jones, najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków na najbliższe dni.',\n  },\n  {\n    category: 'krypto',\n    title: 'Krypto',\n    prompt: 'Kryptowaluty: kurs Bitcoina i Ethereum, zmiana 24h i 7 dni, najważniejsze wydarzenia i trendy (regulacje, ETF-y, duże przepływy), prognozy analityków.',\n  },\n  {\n    category: 'scamy',\n    title: 'Ostrzeżenia przed scamami',\n    prompt: 'Nowe oszustwa inwestycyjne w Polsce z ostatnich 7 dni: ostrzeżenia CERT Polska, KNF (lista ostrzeżeń publicznych), policji, Niebezpiecznika, Sekuraka. Podaj nazwy fałszywych platform i domen, schemat działania (np. fałszywe artykuły z celebrytami, \"platforma AI\"), jak się chronić.',\n  },\n];\n\nconst dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });\n\nreturn tematy.map((t) => ({\n  json: { ...t, title: `${t.title} — ${dzis}`, dzis },\n}));\n"
+        "jsCode": "// Klocek \"Dane i tematy\": pobiera twarde dane z API i buduje listę tematów raportu.\n// Nowy temat = nowa pozycja w tablicy `tematy` na dole.\n\nconst http = (url, json = true) =>\n  this.helpers.httpRequest({\n    url,\n    json,\n    headers: { 'User-Agent': 'Mozilla/5.0 (research-app)' },\n    timeout: 30000,\n  });\n\nconst pct = (now, before) => (before ? ((now - before) / before) * 100 : null);\nconst fmtPct = (v) =>\n  v == null || Number.isNaN(v) ? 'b/d' : (v > 0 ? '+' : '') + v.toFixed(2).replace('.', ',') + '%';\nconst fmtNum = (v, digits = 2) =>\n  v.toLocaleString('pl-PL', { minimumFractionDigits: digits, maximumFractionDigits: digits });\n\n// Zmiany z serii zamknięć: 1 sesja, 5 sesji (tydzień), 21 sesji (miesiąc)\nfunction zmiany(closes) {\n  const last = closes[closes.length - 1];\n  const back = (n) => (closes.length > n ? closes[closes.length - 1 - n] : null);\n  return { last, d1: pct(last, back(1)), d7: pct(last, back(5)), d30: pct(last, back(21)) };\n}\nconst opisZmian = (z) =>\n  `dzień ${fmtPct(z.d1)} | tydzień ${fmtPct(z.d7)} | miesiąc ${fmtPct(z.d30)}`;\n\n// Błąd jednego źródła nie wywala całego raportu\nasync function bezpiecznie(nazwa, fn) {\n  try {\n    return await fn();\n  } catch (e) {\n    return [`${nazwa}: brak danych (${e.message})`];\n  }\n}\n\nasync function yahoo(symbol, nazwa, jednostka) {\n  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`;\n  const r = (await http(url)).chart.result[0];\n  const closes = r.indicators.quote[0].close.filter((x) => x != null);\n  if (closes.length > 21) {\n    const z = zmiany(closes);\n    return `${nazwa}: ${fmtNum(z.last)} ${jednostka} | ${opisZmian(z)}`;\n  }\n  // Yahoo nie ma historii dla części indeksów GPW, jest tylko zmiana dzienna\n  return `${nazwa}: ${fmtNum(r.meta.regularMarketPrice)} ${jednostka} | dzień ${fmtPct(r.meta.regularMarketChangePercent)}`;\n}\n\nconst zloto = await bezpiecznie('Złoto NBP', async () => {\n  const g = await http('https://api.nbp.pl/api/cenyzlota/last/30?format=json');\n  const z = zmiany(g.map((x) => x.cena));\n  return [\n    `Złoto wg NBP (1 g, notowanie z ${g[g.length - 1].data}): ${fmtNum(z.last)} zł | ${opisZmian(z)}`,\n  ];\n});\nconst zlotoUsd = await bezpiecznie('Złoto USD', async () => [\n  await yahoo('GC=F', 'Złoto kontrakty (1 uncja)', 'USD'),\n]);\nconst usdPln = await bezpiecznie('USD/PLN', async () => {\n  const r = (await http('https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json')).rates;\n  const z = zmiany(r.map((x) => x.mid));\n  return [`Kurs USD/PLN wg NBP (${r[r.length - 1].effectiveDate}): ${fmtNum(z.last, 4)} zł | ${opisZmian(z)}`];\n});\nconst gpw = await bezpiecznie('GPW', async () => [\n  await yahoo('WIG20.WA', 'WIG20', 'pkt'),\n  await yahoo('WIG.WA', 'WIG', 'pkt'),\n]);\nconst usa = await bezpiecznie('USA', async () => [\n  await yahoo('^GSPC', 'S&P 500', 'pkt'),\n  await yahoo('^IXIC', 'Nasdaq Composite', 'pkt'),\n  await yahoo('^DJI', 'Dow Jones', 'pkt'),\n]);\nconst krypto = await bezpiecznie('CoinGecko', async () => {\n  const cg = await http(\n    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=24h,7d,30d',\n  );\n  return cg.map(\n    (c) =>\n      `${c.name}: ${fmtNum(c.current_price, 0)} USD | 24h ${fmtPct(c.price_change_percentage_24h_in_currency)} | 7 dni ${fmtPct(c.price_change_percentage_7d_in_currency)} | 30 dni ${fmtPct(c.price_change_percentage_30d_in_currency)}`,\n  );\n});\nconst scamy = await bezpiecznie('CERT Polska', async () => {\n  const lista = (await http('https://hole.cert.pl/domains/v2/domains.txt', false))\n    .split('\\n')\n    .map((s) => s.trim())\n    .filter(Boolean);\n  const slowa = /invest|inwest|crypto|krypto|bitcoin|btc|gield|broker|trad|zarob|zysk|forex|lewandowski|orlen|pko|pekao|baltic|gpw|knf|nbp/i;\n  const finansowe = lista.filter((d) => slowa.test(d));\n  // Lista jest alfabetyczna i bez dat — losujemy przykłady\n  const przyklady = [...finansowe].sort(() => Math.random() - 0.5).slice(0, 15);\n  return [\n    `Lista ostrzeżeń CERT Polska: ${lista.length.toLocaleString('pl-PL')} niebezpiecznych domen, w tym ${finansowe.length.toLocaleString('pl-PL')} z nazwą sugerującą inwestycje/finanse`,\n    `Przykładowe domeny z listy CERT (nie wchodzić!): ${przyklady.join(', ')}`,\n  ];\n});\n\nconst tematy = [\n  {\n    category: 'zloto',\n    title: 'Złoto',\n    dane: [...zloto, ...zlotoUsd, ...usdPln],\n    zrodla: [\n      { nazwa: 'NBP — ceny złota', url: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json' },\n      { nazwa: 'Yahoo Finance — GC=F', url: 'https://finance.yahoo.com/quote/GC=F' },\n    ],\n    prompt: 'Złoto: co napędza ostatnie ruchy ceny, najważniejsze newsy, najnowsze prognozy banków i analityków (kto i jaki poziom).',\n  },\n  {\n    category: 'gpw',\n    title: 'GPW',\n    dane: [...gpw, ...usdPln],\n    zrodla: [{ nazwa: 'Yahoo Finance — WIG20', url: 'https://finance.yahoo.com/quote/WIG20.WA' }],\n    prompt: 'Giełda w Warszawie: najważniejsze newsy o spółkach (wyniki, dywidendy, komunikaty), największe wzrosty i spadki, rekomendacje domów maklerskich.',\n  },\n  {\n    category: 'usa',\n    title: 'Rynek USA',\n    dane: usa,\n    zrodla: [{ nazwa: 'Yahoo Finance — S&P 500', url: 'https://finance.yahoo.com/quote/%5EGSPC' }],\n    prompt: 'Rynek akcji w USA: najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków na najbliższe dni.',\n  },\n  {\n    category: 'krypto',\n    title: 'Krypto',\n    dane: krypto,\n    zrodla: [{ nazwa: 'CoinGecko', url: 'https://www.coingecko.com/' }],\n    prompt: 'Kryptowaluty: najważniejsze wydarzenia i trendy (regulacje, ETF-y, duże przepływy), prognozy analityków dla Bitcoina i Ethereum.',\n  },\n  {\n    category: 'scamy',\n    title: 'Ostrzeżenia przed scamami',\n    dane: scamy,\n    zrodla: [{ nazwa: 'CERT Polska — lista ostrzeżeń', url: 'https://cert.pl/lista-ostrzezen/' }],\n    prompt: 'Nowe oszustwa inwestycyjne w Polsce z ostatnich 7 dni: ostrzeżenia CERT Polska, KNF (lista ostrzeżeń publicznych), policji, Niebezpiecznika, Sekuraka. Nazwy fałszywych platform, schematy działania (np. fałszywe artykuły z celebrytami, \"platforma AI\"), jak się chronić.',\n  },\n];\n\nconst dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });\n\nreturn tematy.map((t) => ({\n  json: { ...t, title: `${t.title} — ${dzis}`, dzis, daneTekst: t.dane.map((d) => '- ' + d).join('\\n') },\n}));\n"
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000002",
-      "name": "Tematy",
+      "name": "Dane i tematy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -29,7 +35,7 @@
         "messages": {
           "values": [
             {
-              "content": "=Dzisiaj jest {{ $json.dzis }}. Przygotuj raport na temat:\n{{ $json.prompt }}"
+              "content": "=Dzisiaj jest {{ $json.dzis }}.\n\nTWARDE DANE:\n{{ $json.daneTekst }}\n\nTEMAT RAPORTU:\n{{ $json.prompt }}"
             }
           ]
         },
@@ -38,14 +44,17 @@
         },
         "options": {
           "includeMergedResponse": true,
-          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe raporty po polsku dla inwestora indywidualnego.\n\nZasady:\n- Zawsze najpierw wyszukaj w Google najświeższe informacje (ostatnie 24-48 godzin, dla scamów ostatnie 7 dni).\n- 5-8 punktów, każdy zaczyna się od \"- \". Konkretne liczby, daty i nazwy.\n- Prognozy tylko cytowane od analityków lub instytucji, z podaniem kto je wydał. Nigdy nie wymyślaj własnych prognoz ani liczb.\n- Jeśli czegoś nie znalazłeś, napisz to wprost zamiast zgadywać.\n- Na końcu jedno zdanie podsumowania, zaczynające się od \"Podsumowanie:\".\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *."
+          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe raporty po polsku dla inwestora indywidualnego.\n\nZasady:\n- Liczby z sekcji TWARDE DANE są pewne (pochodzą z API). Używaj tylko ich dla tych instrumentów. Jeśli wyszukiwarka podaje inne wartości, ufaj twardym danym.\n- Newsy i prognozy bierz z wyszukiwarki Google, z ostatnich 24-48 godzin (dla oszustw z ostatnich 7 dni).\n- Po każdej informacji z wyszukiwarki podaj w nawiasie domenę źródła, np. (bankier.pl).\n- Prognozy tylko cytowane od analityków lub instytucji, z nazwą autora. Nigdy nie wymyślaj własnych prognoz ani liczb.\n- Nie cytuj stron, które wyglądają na reklamy inwestycyjne, \"platformy AI\" albo obiecują zyski.\n- Jeśli czegoś nie znalazłeś, napisz to wprost zamiast zgadywać.\n- 5-8 punktów, każdy zaczyna się od \"- \". Na końcu jedno zdanie zaczynające się od \"Podsumowanie:\".\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *."
         }
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000003",
       "name": "Gemini + Google Search",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -57,20 +66,33 @@
     },
     {
       "parameters": {
+        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza źródła Gemini na liście CERT Polska\n// i składa gotową treść raportu (tekst + twarde dane + źródła).\n\nconst ZAUFANE = [\n  'bankier.pl', 'money.pl', 'pb.pl', 'parkiet.com', 'rp.pl', 'businessinsider.com.pl', 'forsal.pl',\n  'wnp.pl', 'isbnews.pl', 'pap.pl', 'tvn24.pl', 'strefainwestorow.pl', 'comparic.pl', 'obserwatorfinansowy.pl',\n  'gpw.pl', 'knf.gov.pl', 'nbp.pl', 'gov.pl', 'cert.pl', 'policja.pl', 'niebezpiecznik.pl', 'sekurak.pl',\n  'zaufanatrzeciastrona.pl', 'cyberdefence24.pl', 'xtb.com', 'bossa.pl', 'mbank.pl', 'stooq.pl',\n  'reuters.com', 'bloomberg.com', 'cnbc.com', 'ft.com', 'wsj.com', 'marketwatch.com', 'investing.com',\n  'yahoo.com', 'apnews.com', 'bbc.com', 'economist.com', 'barrons.com', 'fool.com', 'morningstar.com',\n  'federalreserve.gov', 'ecb.europa.eu', 'sec.gov', 'gold.org', 'kitco.com',\n  'coindesk.com', 'cointelegraph.com', 'theblock.co', 'decrypt.co', 'coingecko.com', 'coinmarketcap.com',\n];\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction domenaIRodzice(domena) {\n  const czesci = domena.split('.');\n  return czesci.slice(0, -1).map((_, i) => czesci.slice(i).join('.'));\n}\nconst naLiscie = (domena, zbior) => domenaIRodzice(domena).some((d) => zbior.has(d));\nconst zaufane = new Set(ZAUFANE);\n\nreturn $input.all().map((item, i) => {\n  const temat = $('Dane i tematy').itemMatching(i).json;\n  const chunks = item.json.groundingMetadata?.groundingChunks ?? [];\n\n  const zrodla = [];\n  const odrzucone = [];\n  const widziane = new Set();\n  for (const c of chunks) {\n    const url = c.web?.uri;\n    const domena = (c.web?.title ?? '').toLowerCase().replace(/^www\\./, '').trim();\n    if (!url || widziane.has(url)) continue;\n    widziane.add(url);\n\n    if (/^[a-z0-9.-]+\\.[a-z]{2,}$/.test(domena) && naLiscie(domena, cert)) {\n      odrzucone.push(domena);\n    } else if (naLiscie(domena, zaufane)) {\n      zrodla.push(`- ✅ ${domena} ${url}`);\n    } else {\n      zrodla.push(`- ⚠️ ${domena || 'nieznane źródło'} ${url}`);\n    }\n  }\n\n  const sekcje = [\n    (item.json.mergedResponse ?? '').trim() || 'Brak odpowiedzi modelu.',\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n    'Źródła danych:\\n' + temat.zrodla.map((z) => `- 📊 ${z.nazwa} ${z.url}`).join('\\n'),\n  ];\n  if (zrodla.length) {\n    sekcje.push('Źródła newsów (✅ zaufane, ⚠️ nieweryfikowane):\\n' + zrodla.join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone źródła (lista ostrzeżeń CERT Polska): ' + [...new Set(odrzucone)].join(', '));\n  }\n\n  return {\n    json: { category: temat.category, title: temat.title, content: sekcje.join('\\n\\n') },\n    pairedItem: { item: i },\n  };\n});\n"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000005",
+      "name": "Weryfikacja źródeł",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "tableId": "reports",
         "fieldsUi": {
           "fieldValues": [
             {
               "fieldId": "category",
-              "fieldValue": "={{ $('Tematy').item.json.category }}"
+              "fieldValue": "={{ $json.category }}"
             },
             {
               "fieldId": "title",
-              "fieldValue": "={{ $('Tematy').item.json.title }}"
+              "fieldValue": "={{ $json.title }}"
             },
             {
               "fieldId": "content",
-              "fieldValue": "={{ $json.mergedResponse }}{{ ($json.groundingMetadata?.groundingChunks ?? []).length ? '\\n\\nŹródła:\\n' + $json.groundingMetadata.groundingChunks.map(c => '- ' + (c.web?.title ?? 'źródło') + ' ' + c.web?.uri).join('\\n') : '' }}"
+              "fieldValue": "={{ $json.content }}"
             }
           ]
         }
@@ -79,7 +101,10 @@
       "name": "Zapis do apki",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [680, 0],
+      "position": [
+        900,
+        0
+      ],
       "credentials": {
         "supabaseApi": {
           "name": "Supabase account"
@@ -89,13 +114,48 @@
   ],
   "connections": {
     "Start": {
-      "main": [[{ "node": "Tematy", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Dane i tematy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Tematy": {
-      "main": [[{ "node": "Gemini + Google Search", "type": "main", "index": 0 }]]
+    "Dane i tematy": {
+      "main": [
+        [
+          {
+            "node": "Gemini + Google Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gemini + Google Search": {
-      "main": [[{ "node": "Zapis do apki", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weryfikacja źródeł": {
+      "main": [
+        [
+          {
+            "node": "Zapis do apki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
