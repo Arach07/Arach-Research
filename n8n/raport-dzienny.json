@@ -1,0 +1,104 @@
+{
+  "name": "Raport dzienny",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lista tematów raportu. Nowy temat = nowa pozycja na liście.\n// category musi pasować do kategorii w apce: zloto, gpw, usa, krypto, scamy, ogolny\nconst tematy = [\n  {\n    category: 'zloto',\n    title: 'Złoto',\n    prompt: 'Cena złota: aktualny poziom w USD za uncję i w PLN za gram, zmiana dzienna i tygodniowa, co napędza ruch, najnowsze prognozy banków i analityków (kto i jaki poziom).',\n  },\n  {\n    category: 'gpw',\n    title: 'GPW',\n    prompt: 'Giełda Papierów Wartościowych w Warszawie: jak zamknęły się WIG20 i WIG, najważniejsze newsy o spółkach (wyniki, dywidendy, komunikaty), największe wzrosty i spadki, rekomendacje domów maklerskich.',\n  },\n  {\n    category: 'usa',\n    title: 'Rynek USA',\n    prompt: 'Rynek akcji w USA: S&P 500, Nasdaq, Dow Jones, najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków na najbliższe dni.',\n  },\n  {\n    category: 'krypto',\n    title: 'Krypto',\n    prompt: 'Kryptowaluty: kurs Bitcoina i Ethereum, zmiana 24h i 7 dni, najważniejsze wydarzenia i trendy (regulacje, ETF-y, duże przepływy), prognozy analityków.',\n  },\n  {\n    category: 'scamy',\n    title: 'Ostrzeżenia przed scamami',\n    prompt: 'Nowe oszustwa inwestycyjne w Polsce z ostatnich 7 dni: ostrzeżenia CERT Polska, KNF (lista ostrzeżeń publicznych), policji, Niebezpiecznika, Sekuraka. Podaj nazwy fałszywych platform i domen, schemat działania (np. fałszywe artykuły z celebrytami, \"platforma AI\"), jak się chronić.',\n  },\n];\n\nconst dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });\n\nreturn tematy.map((t) => ({\n  json: { ...t, title: `${t.title} — ${dzis}`, dzis },\n}));\n"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000002",
+      "name": "Tematy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Dzisiaj jest {{ $json.dzis }}. Przygotuj raport na temat:\n{{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {
+          "googleSearch": true
+        },
+        "options": {
+          "includeMergedResponse": true,
+          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe raporty po polsku dla inwestora indywidualnego.\n\nZasady:\n- Zawsze najpierw wyszukaj w Google najświeższe informacje (ostatnie 24-48 godzin, dla scamów ostatnie 7 dni).\n- 5-8 punktów, każdy zaczyna się od \"- \". Konkretne liczby, daty i nazwy.\n- Prognozy tylko cytowane od analityków lub instytucji, z podaniem kto je wydał. Nigdy nie wymyślaj własnych prognoz ani liczb.\n- Jeśli czegoś nie znalazłeś, napisz to wprost zamiast zgadywać.\n- Na końcu jedno zdanie podsumowania, zaczynające się od \"Podsumowanie:\".\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *."
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000003",
+      "name": "Gemini + Google Search",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [440, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "reports",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $('Tematy').item.json.category }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Tematy').item.json.title }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.mergedResponse }}{{ ($json.groundingMetadata?.groundingChunks ?? []).length ? '\\n\\nŹródła:\\n' + $json.groundingMetadata.groundingChunks.map(c => '- ' + (c.web?.title ?? 'źródło') + ' ' + c.web?.uri).join('\\n') : '' }}"
+            }
+          ]
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000004",
+      "name": "Zapis do apki",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 0],
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [[{ "node": "Tematy", "type": "main", "index": 0 }]]
+    },
+    "Tematy": {
+      "main": [[{ "node": "Gemini + Google Search", "type": "main", "index": 0 }]]
+    },
+    "Gemini + Google Search": {
+      "main": [[{ "node": "Zapis do apki", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

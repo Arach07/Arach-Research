@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "./login/actions";
+import { ReportContent } from "./report-content";
 
 type Report = {
   id: number;
@@ -67,7 +68,7 @@ export default async function Home() {
               </time>
             </div>
             <h2 className="mb-2 text-lg font-semibold">{report.title}</h2>
-            <p className="whitespace-pre-line leading-relaxed">{report.content}</p>
+            <ReportContent text={report.content} />
           </li>
         ))}
       </ul>
