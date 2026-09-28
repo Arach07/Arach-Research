@@ -1,17 +1,13 @@
-// Szkielet ekranu pokazywany natychmiast po kliknięciu zakładki, zanim przyjdą dane
+// Kółeczko ładowania przy przełączaniu zakładek. Pojawia się dopiero po ~0,3 s,
+// żeby przy szybkim ładowaniu nic nie migało na ułamek sekundy.
 export default function Loading() {
   return (
-    <div className="animate-pulse space-y-5" aria-busy="true" aria-label="Ładowanie">
-      <div className="h-8 w-40 rounded-lg bg-white/[0.06]" />
-      <div className="flex gap-2 overflow-hidden">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-[76px] min-w-[7.5rem] rounded-2xl border border-line bg-white/[0.03]" />
-        ))}
-      </div>
-      <div className="card card-hero h-32" />
-      {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="card h-28" />
-      ))}
+    <div
+      className="flex min-h-[60vh] items-center justify-center opacity-0 [animation:fade-in_200ms_ease-out_300ms_forwards]"
+      role="status"
+      aria-label="Ładowanie"
+    >
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-accent/20 border-t-accent" />
     </div>
   );
 }
