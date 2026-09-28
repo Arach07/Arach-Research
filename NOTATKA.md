@@ -1,6 +1,6 @@
 # Research: notatka o stanie projektu
 
-**Stan na: poniedziałek 28.09.2026, po południu (komputer w pracy)**
+**Stan na: poniedziałek 28.09.2026, ok. 16:50 (komputer w pracy)**
 
 Ta notatka opisuje dokładnie, co już działa, gdzie co jest i co robimy dalej.
 Żeby wrócić do pracy, napisz w Claude Code: **„jestem w domu, robimy VPN”** albo **„robimy Oracle”**.
@@ -139,15 +139,26 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 ## 6. NA CZYM SKOŃCZYLIŚMY: zadania do zrobienia
 
 ### A. Teraz, na komputerze w pracy (chodzi 24 h)
-1. [x] Napisać Claude'owi **„przełącz”**. Wyłączy n8n uruchomione z rozmowy, które zgaśnie po zamknięciu sesji. ✅ 28.09: n8n działa w osobnym oknie start-n8n.cmd.
-2. [x] Dwuklik na `Desktop\ResearchApp\n8n\start-n8n.cmd` i poczekać na „Editor is now accessible”. **Okna nie zamykać.**
-3. [x] W n8n: Ctrl+A, potem Delete, potem wkleić zawartość `n8n/raport-dzienny.json` (z harmonogramem 9/14/20 i jednym zapytaniem do Gemini).
-4. [x] Sprawdzić credentiale w klockach **Gemini** i **Zapis do apki**, potem Ctrl+S.
-5. [ ] Kliknąć **Publish** (prawy górny róg). **Bez tego harmonogram nie ruszy.** ⚠️ sprawdzić, czy jest włączony.
-6. [x] Raz odpalić ręcznie (**Execute workflow**) i sprawdzić apkę: czy są wykresy, podsumowanie dnia i przypisy. ✅ 28.09: działa, komentarz napisał Gemini 3 (1 i 2 miały limit).
-7. [ ] Autostart: Win+R, wpisać `shell:startup`, wrzucić tam **skrót** do `start-n8n.cmd`.
-8. [x] **Supabase → SQL Editor:** wkleić i uruchomić `supabase/cleanup.sql` (automatyczne usuwanie raportów starszych niż 30 dni). ✅ zrobione 28.09.
-9. [ ] Uśpienie komputera: Ustawienia, System, Zasilanie, **Nigdy**.
+
+**Gdzie działa n8n:** obecnie **z okna rozmowy z Claude Code** (a nie z `start-n8n.cmd`).
+Dopóki okno Claude Code jest otwarte, harmonogram działa. **Zamknięcie okna Claude Code = n8n się wyłącza.**
+Gdy będziesz chciał, żeby n8n działał niezależnie: dwuklik na `n8n/start-n8n.cmd` (okno cmd „nie zamykaj”).
+
+**Zrobione 28.09:**
+- [x] Workflow z jednym zapytaniem do Gemini, łańcuchem modeli i harmonogramem, przetestowany ręcznie (komentarz napisał Gemini 3).
+- [x] Test harmonogramu o 16:30: **n8n uruchomił się sam** ✅.
+- [x] Apka sama pokazuje nowy raport najpóźniej ok. 1 min po zapisie ✅.
+- [x] Supabase: sprzątanie raportów starszych niż 30 dni (`supabase/cleanup.sql`) ✅.
+- [x] Kursy na żywo co 20 s, szybsze zakładki, kółeczko ładowania, stabilny układ ✅.
+
+**Do zrobienia (najbliższe):**
+1. [ ] **Wgrać NAJNOWSZY workflow** z `n8n/raport-dzienny.json` (**5 modeli + do 3 rund z pauzą 60 s**): w n8n Ctrl+A, Delete, wklej, sprawdź **Credential** w 5 klockach modeli i w „Zapis do apki”, Ctrl+S.
+2. [ ] **Publish** (prawy górny róg), żeby harmonogram 9:00/14:00/20:00 działał. W nowej wersji nie ma już testowej reguły 16:30.
+3. [ ] **Sprawdzić raport z 20:00:** w apce „Komentarze z raportu: pon. 20:00” i czy jest komentarz AI. Jeśli nie, n8n, Executions, uruchomienie z 20:00, screen czerwonych klocków i treść błędu (429 = limit, 503 = przeciążenie).
+4. [ ] Decyzja: dołożyć `gemini-3.8-flash` jako 6. model przed Gemmą? (propozycja Claude'a, jedna linijka w `MODELE`).
+5. [ ] Jeśli n8n ma działać bez otwartego Claude Code: `start-n8n.cmd` + **autostart** (Win+R, `shell:startup`, skrót do `start-n8n.cmd`).
+6. [x] Uśpienie komputera: potwierdzone, że komputer nie usypia się sam (tylko blokuje ekran). Nic nie trzeba zmieniać.
+7. [ ] Bezpieczeństwo: klucz Gemini wklejony wcześniej na czat powinien być **usunięty w AI Studio** (nowy klucz tylko w n8n). Sprawdzić, czy stary na pewno skasowany.
 
 ⚠️ Komputer służbowy: IT może nie lubić programów serwerowych, a klucze leżą na firmowym sprzęcie. To rozwiązanie **przejściowe**, docelowo Oracle.
 
@@ -235,3 +246,28 @@ Zapisałem też w pamięci, żeby przy następnej rozmowie najpierw czytać tę 
 Nie zapisałem natomiast całej naszej rozmowy słowo w słowo. W notatce jest wszystko, co z niej ważne, tylko uporządkowane.
 
 Zostało jeszcze zadanie A.1 na dziś: napisz „przełącz”, gdy będziesz gotowy odpalić start-n8n.cmd
+
+---
+
+## 8. Historia sesji 28.09.2026 (skrót chronologiczny)
+
+1. Pomysł: kolega chciał newsy giełdowe na WhatsAppie. Opcje: n8n/Make/Zapier, gotowce (ChatGPT/Gemini), własny skrypt. WhatsApp trudny (Meta Business API), Telegram łatwy.
+2. Decyzja: **uczę się n8n**; kolega robi swoją wersję sam. Pierwotny plan PWA porzucony, a potem wrócił jako moja prywatna apka.
+3. Wybór **darmowego stosu**: n8n self-hosted + Gemini API (free) + Supabase + Vercel.
+4. Instalacja n8n lokalnie (`npx n8n`), darmowa licencja Community.
+5. Lekcja 1: n8n → NBP (cena złota). Lekcja 2: Gemini (błędy: 503 przeciążenie, 2.5 niedostępne dla nowych kont; działa `gemini-3.5-flash-lite`).
+6. Mail (SMTP) odrzucony, od razu apka: Next.js 16 + Supabase (logowanie tylko ja, RLS) + Vercel (`research-page`). Problemy po drodze: pusty projekt Supabase, pomylony projekt Home-Budget, URL z `/rest/v1/`.
+7. n8n → Supabase (klocek „Create a row”, klucz service_role).
+8. Workflow z listą tematów (1 klocek zapisu zamiast wielu).
+9. Gemini opisał złoto jako „wysoko”, choć spadało, więc przejście na **twarde dane z API** (NBP, Yahoo, CoinGecko) i **weryfikację źródeł na liście CERT Polska**.
+10. Google Search w Gemini: błąd 429, więc **newsy z RSS 13 zaufanych portali**; raport powstaje nawet bez AI.
+11. Makiety wyglądu, wybrany **Midnight Gold**; apka z 4 zakładkami (Dziś, Rynki, Scamy ze sprawdzaniem linków, Archiwum).
+12. Harmonogram (najpierw 8/13/18, potem **9/14/20**, bo limit Gemini odnawia się ok. 9:00).
+13. Odkrycie: błędy to **dzienny** limit, więc **1 zapytanie na raport** zamiast 6, potem **łańcuch 3, a następnie 5 modeli** (w tym Gemma) i **do 3 rund** z pauzą 60 s.
+14. Apka: **kursy na żywo co 20 s** (bez zużywania limitu Supabase), sprawdzanie nowych raportów co minutę, przyspieszenie (serwer we Frankfurcie, lżejsze zapytania), kółeczko ładowania, stabilny układ.
+15. Supabase: sprzątanie raportów po 30 dniach.
+16. Plan rozbudowy na później (sekcja 7) i plan na dom: VPN (nauka) + Oracle (sekcja 6 B/C).
+
+**Surowy zapis całej rozmowy** (z obrazkami, ok. 10 MB) jest tylko lokalnie na tym komputerze:
+`C:/Users/arachowicz/.claude/projects/c--Users-arachowicz-Desktop-ResearchApp/3bf128a6-5c94-4b63-b4b1-dad18ba86d10.jsonl`
+⚠️ Nie wrzucać go do repo ani nikomu nie wysyłać: zawiera m.in. klucz Gemini wklejony na czat.
