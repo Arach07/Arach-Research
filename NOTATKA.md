@@ -86,6 +86,7 @@ Dlaczego tak:
 - **Łańcuch 5 modeli** (każdy ma **osobny** dzienny limit):
   1. `gemini-3.5-flash-lite`, 2. `gemini-3.5-flash`, 3. `gemini-3-flash-preview`, 4. `gemini-3.1-flash-lite`, 5. `gemma-4-31b-it`.
   - **Gemma** to tekstowy model Google (nie do grafik), zwykle z większym darmowym limitem. Nie przyjmuje instrukcji systemowej ani trybu JSON, więc zasady dostaje na początku wiadomości, a odpowiedź „naprawia” klocek Weryfikacja (wycina JSON, poprawia znaki nowej linii).
+- **Pauza 10 s przed każdym kolejnym modelem.** Diagnoza z historii n8n (28.09): nieudane próby to **503 „Service unavailable”** (przeciążenie serwerów Google), a **nie** wyczerpany limit, więc chwila odczekania pomaga.
 - **Rundy:** gdy wszystkie 5 modeli odmówi, następuje pauza 60 s i cały łańcuch od nowa, **maksymalnie 3 rundy** (pomaga na przeciążenia 503; na wyczerpany dzienny limit 429 pomagają inne modele).
 - Modele, liczbę rund i pauzę zmienia się w `n8n/build-workflow.mjs` (`MODELE`, `RUNDY`, `PAUZA_MIEDZY_RUNDAMI_S`), a potem trzeba uruchomić `node n8n/build-workflow.mjs`.
 - Pomijamy modele 2.5 (niedostępne dla nowych kont), „live”, „transcribe”, „lyria” (muzyka), „nano-banana” (grafika), „robotics”.

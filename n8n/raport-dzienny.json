@@ -145,6 +145,22 @@
     },
     {
       "parameters": {
+        "resume": "timeInterval",
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000400",
+      "name": "Pauza 10 s (1)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        120
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000500"
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "id",
@@ -214,6 +230,22 @@
         1540,
         180
       ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000401",
+      "name": "Pauza 10 s (2)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        300
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000501"
     },
     {
       "parameters": {
@@ -289,6 +321,22 @@
     },
     {
       "parameters": {
+        "resume": "timeInterval",
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000402",
+      "name": "Pauza 10 s (3)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        480
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000502"
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "id",
@@ -358,6 +406,22 @@
         2420,
         540
       ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000403",
+      "name": "Pauza 10 s (4)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2420,
+        660
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000503"
     },
     {
       "parameters": {
@@ -591,6 +655,17 @@
         ],
         [
           {
+            "node": "Pauza 10 s (1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 10 s (1)": {
+      "main": [
+        [
+          {
             "node": "Gemini 2 (3.5-flash)",
             "type": "main",
             "index": 0
@@ -618,6 +693,17 @@
             "index": 0
           }
         ],
+        [
+          {
+            "node": "Pauza 10 s (2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 10 s (2)": {
+      "main": [
         [
           {
             "node": "Gemini 3 (3-flash)",
@@ -649,6 +735,17 @@
         ],
         [
           {
+            "node": "Pauza 10 s (3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 10 s (3)": {
+      "main": [
+        [
+          {
             "node": "Gemini 4 (3.1-flash-lite)",
             "type": "main",
             "index": 0
@@ -676,6 +773,17 @@
             "index": 0
           }
         ],
+        [
+          {
+            "node": "Pauza 10 s (4)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 10 s (4)": {
+      "main": [
         [
           {
             "node": "Gemma 5 (gemma-4-31b)",

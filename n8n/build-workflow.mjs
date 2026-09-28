@@ -33,6 +33,8 @@ const MODELE = [
 // Gdy wszystkie modele odmówią: pauza i cały łańcuch od nowa, maksymalnie tyle rund
 const RUNDY = 3;
 const PAUZA_MIEDZY_RUNDAMI_S = 60;
+// Przeciążenie Gemini (503 "Service unavailable") zwykle mija po chwili — przed kolejnym modelem czekamy
+const PAUZA_MIEDZY_MODELAMI_S = 10;
 
 const id = (n) => `7b0f7a1e-1111-4a6b-9c01-${String(n).padStart(12, '0')}`;
 
@@ -100,10 +102,17 @@ const WERYFIKACJA = to('Weryfikacja źródeł');
 const polaczeniaModeli = Object.fromEntries(
   MODELE.flatMap((m, i) => {
     const ifName = `Jest komentarz? (${i + 1})`;
-    const dalej = i < MODELE.length - 1 ? to(MODELE[i + 1].nazwa) : to('Kolejna runda?');
+    if (i === MODELE.length - 1) {
+      return [
+        [m.nazwa, { main: [[to(ifName)]] }],
+        [ifName, { main: [[WERYFIKACJA], [to('Kolejna runda?')]] }],
+      ];
+    }
+    const pauza = `Pauza ${PAUZA_MIEDZY_MODELAMI_S} s (${i + 1})`;
     return [
       [m.nazwa, { main: [[to(ifName)]] }],
-      [ifName, { main: [[WERYFIKACJA], [dalej]] }],
+      [ifName, { main: [[WERYFIKACJA], [to(pauza)]] }],
+      [pauza, { main: [[to(MODELE[i + 1].nazwa)]] }],
     ];
   }),
 );
@@ -160,7 +169,23 @@ const workflow = {
       typeVersion: 2,
       position: [660, 0],
     },
-    ...MODELE.flatMap((m, i) => [gemini(m, i, [X(i), Y(i)]), czyJestKomentarz(i, [X(i) + 220, Y(i)])]),
+    ...MODELE.flatMap((m, i) => [
+      gemini(m, i, [X(i), Y(i)]),
+      czyJestKomentarz(i, [X(i) + 220, Y(i)]),
+      ...(i < MODELE.length - 1
+        ? [
+            {
+              parameters: { resume: 'timeInterval', amount: PAUZA_MIEDZY_MODELAMI_S, unit: 'seconds' },
+              id: id(400 + i),
+              name: `Pauza ${PAUZA_MIEDZY_MODELAMI_S} s (${i + 1})`,
+              type: 'n8n-nodes-base.wait',
+              typeVersion: 1.1,
+              position: [X(i) + 220, Y(i) + 120],
+              webhookId: id(500 + i),
+            },
+          ]
+        : []),
+    ]),
     warunek('Kolejna runda?', id(300), [X(ostatni) + 440, Y(ostatni)], {
       leftValue: "={{ $('Runda').last().json.runda }}",
       rightValue: RUNDY,
