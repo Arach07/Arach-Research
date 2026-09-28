@@ -2,7 +2,7 @@ import { logout } from "@/app/login/actions";
 import { CategoryCard } from "@/components/category-card";
 import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
-import { LiveBadge, LiveRefresh } from "@/components/live-refresh";
+import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
 import { liveQuotes, mergeInstruments, withLive } from "@/lib/quotes";
@@ -23,7 +23,6 @@ export default async function TodayPage() {
 
   return (
     <div className="space-y-5">
-      <LiveRefresh />
       <header className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">
@@ -46,7 +45,7 @@ export default async function TodayPage() {
 
       {ticker.length > 0 && (
         <div className="space-y-2">
-          <LiveBadge at={live.fetchedAt} />
+          <LiveBadge />
           <Ticker instruments={ticker} />
         </div>
       )}

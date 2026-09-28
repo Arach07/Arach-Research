@@ -122,12 +122,14 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 | 🛡️ **Scamy** | **„Sprawdź link”** (🔴 z listy CERT / 🟡 podejrzana / 🟢 oficjalna / ⚪ brak na liście), porady, ostrzeżenia |
 | 📁 **Archiwum** | raporty pogrupowane po dniach + wyszukiwarka |
 
-- **Kursy na żywo:** zakładki Dziś i Rynki oraz szczegóły tematu pobierają kursy bezpośrednio (NBP, Yahoo, CoinGecko), bez AI, najwyżej co 20 sekund, i odświeżają się same co 20 s (także w apce na ekranie głównym). Oznaczenie: zielona kropka i „Kursy na żywo · GG:MM”. Kod: `web/src/lib/quotes.ts`. Komentarze AI i newsy dalej pochodzą z raportu n8n (3 razy dziennie). Archiwum pokazuje kursy z chwili raportu.
+- **Kursy na żywo:** zakładki Dziś i Rynki oraz szczegóły tematu pobierają kursy bezpośrednio (NBP, Yahoo, CoinGecko), bez AI. Przeglądarka co 20 s odpytuje `/api/kursy`, co **nie dotyka bazy Supabase**, więc nie zużywa limitu transferu. Raporty z bazy ładują się tylko przy otwarciu, zmianie zakładki albo po powrocie do apki (najwyżej co 5 min). Oznaczenie: zielona kropka i „Kursy na żywo · GG:MM”. Kod: `web/src/lib/quotes.ts`. Komentarze AI i newsy dalej pochodzą z raportu n8n (3 razy dziennie). Archiwum pokazuje kursy z chwili raportu.
   - Częstotliwość zmian w źródłach: złoto NBP i USD/PLN raz dziennie (dni robocze ok. 12:00), GPW w trakcie sesji 9:00–17:00 (ok. 15 min opóźnienia), USA 15:30–22:00, krypto 24/7.
 - Instalacja na telefonie: otwórz adres apki, potem Udostępnij, potem „Dodaj do ekranu początkowego”.
 - Raporty się **nie nadpisują**: każde uruchomienie dopisuje 6 nowych. „Dziś” i „Rynki” pokazują najnowsze, a starsze są w Archiwum.
 - Miejsce: ok. 0,3 MB dziennie przy 12–18 raportach, a darmowy Supabase ma 500 MB, co daje ok. 3–4 lata.
-- **Do zrobienia później:** Archiwum pokazuje ostatnie 100 raportów, więc trzeba dodać „pokaż starsze”. Opcjonalnie automatyczne usuwanie raportów starszych niż rok.
+- **Limity darmowego Supabase:** baza 500 MB, transfer ok. 5 GB/mies. Raporty zajmują ok. 0,4 MB/dzień.
+- **Sprzątanie:** raporty starsze niż **30 dni** usuwa co noc zadanie w bazie (pg_cron), plik `supabase/cleanup.sql`. Uruchomić go RAZ w SQL Editorze (patrz zadania).
+- **Do zrobienia później:** Archiwum pokazuje ostatnie 100 raportów; przy 30 dniach to ok. 5 dni, więc trzeba dodać „pokaż starsze”.
 
 ---
 
@@ -141,7 +143,8 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 5. [ ] Kliknąć **Publish** (prawy górny róg). **Bez tego harmonogram nie ruszy.**
 6. [ ] Raz odpalić ręcznie (**Execute workflow**) i sprawdzić apkę: czy są wykresy, podsumowanie dnia i przypisy.
 7. [ ] Autostart: Win+R, wpisać `shell:startup`, wrzucić tam **skrót** do `start-n8n.cmd`.
-8. [ ] Uśpienie komputera: Ustawienia, System, Zasilanie, **Nigdy**.
+8. [ ] **Supabase → SQL Editor:** wkleić i uruchomić `supabase/cleanup.sql` (automatyczne usuwanie raportów starszych niż 30 dni).
+9. [ ] Uśpienie komputera: Ustawienia, System, Zasilanie, **Nigdy**.
 
 ⚠️ Komputer służbowy: IT może nie lubić programów serwerowych, a klucze leżą na firmowym sprzęcie. To rozwiązanie **przejściowe**, docelowo Oracle.
 

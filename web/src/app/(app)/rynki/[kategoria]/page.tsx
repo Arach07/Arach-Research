@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LiveRefresh } from "@/components/live-refresh";
 import { PageHeader } from "@/components/page-header";
 import { ReportView } from "@/components/report-view";
 import { formatShort } from "@/lib/format";
@@ -25,8 +24,7 @@ export default async function CategoryPage({ params }: PageProps<"/rynki/[katego
       <Link href="/rynki" className="mb-3 inline-block text-sm text-muted hover:text-accent">
         ‹ Rynki
       </Link>
-      <LiveRefresh />
-      <ReportView report={withLive(latest, live)} liveAt={live.byCategory[kategoria]?.length ? live.fetchedAt : undefined} />
+      <ReportView report={withLive(latest, live)} live={Boolean(live.byCategory[kategoria]?.length)} />
 
       {older.length > 0 && (
         <section className="mt-8 space-y-3">

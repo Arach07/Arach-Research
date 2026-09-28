@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Change } from "@/components/change";
-import { LiveBadge, LiveRefresh } from "@/components/live-refresh";
+import { MarketRow } from "@/components/instruments";
+import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { Sparkline } from "@/components/sparkline";
-import { formatNumber } from "@/lib/format";
 import { liveQuotes, withLive } from "@/lib/quotes";
 import { MARKET_ORDER, categoryMeta, latestByCategory, recentReports } from "@/lib/reports";
 
@@ -16,8 +14,7 @@ export default async function MarketsPage() {
 
   return (
     <>
-      <LiveRefresh />
-      <PageHeader title="Rynki" subtitle="Kursy, wykresy 30 dni i pełne raporty" action={<LiveBadge at={live.fetchedAt} />} />
+      <PageHeader title="Rynki" subtitle="Kursy, wykresy 30 dni i pełne raporty" action={<LiveBadge />} />
       {markets.length === 0 && <EmptyState>Brak danych rynkowych.</EmptyState>}
 
       <div className="space-y-5">
@@ -38,20 +35,7 @@ export default async function MarketsPage() {
               </div>
               <ul className="divide-y divide-line">
                 {instruments.map((i) => (
-                  <li key={i.nazwa} className="grid grid-cols-[1fr_5rem_auto] items-center gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm">{i.nazwa}</div>
-                      <div className="tabular gold text-[15px]">
-                        {i.wartosc != null ? formatNumber(i.wartosc, i.cyfry ?? 2) : "—"}
-                        <span className="ml-1 text-[11px]">{i.jednostka !== "pkt" ? i.jednostka : ""}</span>
-                      </div>
-                    </div>
-                    <div>{i.seria && i.seria.length > 1 && <Sparkline values={i.seria} height={28} />}</div>
-                    <div className="text-right text-xs">
-                      <Change value={i.d1 ?? null} className="block font-semibold" />
-                      <Change value={i.d30 ?? null} label="30d" className="block text-[11px]" />
-                    </div>
-                  </li>
+                  <MarketRow key={i.nazwa} instrument={i} />
                 ))}
               </ul>
             </Link>
