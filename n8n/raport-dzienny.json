@@ -9,7 +9,27 @@
       "typeVersion": 1,
       "position": [
         0,
-        0
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8,13,18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000009",
+      "name": "Harmonogram 8/13/18",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        120
       ]
     },
     {
@@ -138,6 +158,17 @@
         ]
       ]
     },
+    "Harmonogram 8/13/18": {
+      "main": [
+        [
+          {
+            "node": "Dane i tematy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Dane i tematy": {
       "main": [
         [
@@ -202,6 +233,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw"
   }
 }

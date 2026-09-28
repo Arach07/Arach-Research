@@ -25,7 +25,18 @@ const workflow = {
       name: 'Start',
       type: 'n8n-nodes-base.manualTrigger',
       typeVersion: 1,
-      position: [0, 0],
+      position: [0, -120],
+    },
+    {
+      // Codziennie o 8:00, 13:00 i 18:00 czasu polskiego (strefa z ustawień workflowu)
+      parameters: {
+        rule: { interval: [{ field: 'cronExpression', expression: '0 8,13,18 * * *' }] },
+      },
+      id: '7b0f7a1e-1111-4a6b-9c01-000000000009',
+      name: 'Harmonogram 8/13/18',
+      type: 'n8n-nodes-base.scheduleTrigger',
+      typeVersion: 1.2,
+      position: [0, 120],
     },
     {
       parameters: { jsCode: src('dane-i-tematy.js') },
@@ -103,6 +114,7 @@ const workflow = {
   ],
   connections: {
     Start: { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
+    'Harmonogram 8/13/18': { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
     'Dane i tematy': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
     // wyjście 0 = "done" (wszystkie tematy gotowe), wyjście 1 = "loop" (kolejny temat)
     'Po kolei': {
@@ -115,7 +127,7 @@ const workflow = {
     'Pauza 10 s': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
     'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
   },
-  settings: { executionOrder: 'v1' },
+  settings: { executionOrder: 'v1', timezone: 'Europe/Warsaw' },
 };
 
 fs.writeFileSync(new URL('raport-dzienny.json', dir), JSON.stringify(workflow, null, 2) + '\n');
