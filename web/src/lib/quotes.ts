@@ -1,8 +1,8 @@
 import type { Instrument } from "./reports";
 
 // Kursy na żywo pobierane przez apkę (bez AI). Te same źródła co w n8n,
-// odświeżane najwyżej co 2 minuty — komentarze i newsy dalej robi n8n 3 razy dziennie.
-const REVALIDATE_SECONDS = 120;
+// odświeżane najwyżej co 20 sekund — komentarze i newsy dalej robi n8n 3 razy dziennie.
+const REVALIDATE_SECONDS = 20;
 
 const pct = (now: number, before: number | null) => (before ? ((now - before) / before) * 100 : null);
 
