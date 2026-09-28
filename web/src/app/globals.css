@@ -32,6 +32,13 @@
   --font-mono: var(--font-mono);
 }
 
+html {
+  /* Stałe miejsce na pasek przewijania — strona nie skacze na boki przy zmianie zakładek */
+  scrollbar-gutter: stable;
+  /* Bez "odbijania" strony na telefonie — dolny pasek nie podskakuje */
+  overscroll-behavior-y: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
