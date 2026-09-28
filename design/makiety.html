@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research — makiety wyglądu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #e9e7e2; color: #222; padding: 32px 16px 64px; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 6px; }
+  .lead { text-align: center; color: #666; margin-bottom: 28px; font-size: 14px; }
+  .row { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .variant { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .variant h2 { font-size: 16px; }
+  .variant p { font-size: 13px; color: #666; max-width: 340px; text-align: center; }
+
+  /* ---------- telefon ---------- */
+  .phone { width: 360px; height: 740px; border-radius: 44px; padding: 10px; background: #111; box-shadow: 0 30px 60px rgba(0,0,0,.25); }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; }
+  .content { position: relative; z-index: 1; flex: 1; overflow: hidden; padding: 18px 16px 0; display: flex; flex-direction: column; gap: 14px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .logo { font-weight: 700; font-size: 20px; letter-spacing: -.02em; }
+  .date { font-size: 12px; opacity: .6; }
+  .ticker { display: flex; gap: 8px; overflow: hidden; }
+  .tick { flex: 0 0 auto; padding: 8px 10px; border-radius: 12px; min-width: 96px; }
+  .tick .n { font-size: 11px; opacity: .65; }
+  .tick .v { font-family: "JetBrains Mono", monospace; font-size: 14px; margin-top: 2px; }
+  .tick .c { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .card { border-radius: 18px; padding: 14px; }
+  .card h3 { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .card .t { font-size: 13px; line-height: 1.45; margin-top: 6px; }
+  .spark { width: 100%; height: 38px; margin-top: 8px; }
+  .nav { position: relative; z-index: 1; display: flex; justify-content: space-around; padding: 10px 6px 18px; font-size: 10.5px; }
+  .nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; opacity: .55; }
+  .nav div.on { opacity: 1; }
+  .nav span { font-size: 18px; }
+  .pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .up { color: var(--up); } .down { color: var(--down); }
+
+  /* ---------- A: Aurora ---------- */
+  .a { --up: #3ee6a0; --down: #ff7a8a; background: #0a0f1f; color: #eef1f8; }
+  .a::before { content: ""; position: absolute; inset: -20%; z-index: 0;
+    background:
+      radial-gradient(40% 30% at 15% 10%, rgba(245,184,61,.35), transparent 70%),
+      radial-gradient(45% 35% at 90% 35%, rgba(48,200,160,.28), transparent 70%),
+      radial-gradient(50% 40% at 30% 95%, rgba(110,90,255,.30), transparent 70%);
+    filter: blur(10px); }
+  .a::after { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .12; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .a .tick, .a .card, .a .nav { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(18px); }
+  .a .nav { border-width: 1px 0 0; border-radius: 0; }
+  .a .hero { background: linear-gradient(135deg, rgba(245,184,61,.18), rgba(48,200,160,.10)); }
+  .a .pill { background: rgba(255,255,255,.1); }
+
+  /* ---------- B: Papier giełdowy ---------- */
+  .b { --up: #0f7a4f; --down: #b42333; background: #f6f2e9; color: #1d1a15;
+    background-image:
+      linear-gradient(rgba(120,100,60,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,100,60,.08) 1px, transparent 1px);
+    background-size: 18px 18px; }
+  .b .logo, .b .card h3 { font-family: Fraunces, Georgia, serif; }
+  .b .logo { font-size: 24px; }
+  .b .tick { background: #fffdf8; border: 1px solid #e3dccb; }
+  .b .card { background: #fffdf8; border: 1px solid #e3dccb; box-shadow: 0 1px 0 #e3dccb; }
+  .b .card h3 { font-size: 15px; }
+  .b .hero { border-left: 3px solid #b8860b; }
+  .b .nav { background: #fffdf8; border-top: 1px solid #e3dccb; }
+  .b .pill { background: #f1e7cf; color: #7a5a10; }
+
+  /* ---------- C: Midnight Gold ---------- */
+  .c { --up: #7ee0a8; --down: #f08a7e; background: #07070a; color: #efe9dc;
+    background-image:
+      radial-gradient(70% 35% at 50% -5%, rgba(214,168,72,.40), transparent 70%),
+      repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 1px, transparent 1px 9px); }
+  .c .gold { background: linear-gradient(180deg, #f7dd9c, #c9983a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .c .tick { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border: 1px solid rgba(214,168,72,.25); }
+  .c .card { background: linear-gradient(180deg, #14131a, #0d0c11); border: 1px solid rgba(214,168,72,.18); }
+  .c .hero { border-color: rgba(214,168,72,.5); box-shadow: 0 0 0 1px rgba(214,168,72,.15), 0 10px 30px rgba(214,168,72,.10); }
+  .c .nav { background: rgba(10,10,14,.9); border-top: 1px solid rgba(214,168,72,.2); }
+  .c .nav .on { color: #e7c276; }
+  .c .pill { background: rgba(214,168,72,.15); color: #e7c276; }
+</style>
+</head>
+<body>
+<h1>Research: 3 kierunki wyglądu</h1>
+<p class="lead">Prawdziwe dane z 28.09.2026 · ekran „Dziś” · wybierz A, B albo C (albo mieszankę)</p>
+
+<div class="row" id="row"></div>
+
+<template id="screen">
+  <div class="content">
+    <div class="top"><div class="logo">Research</div><div class="date">pon. 28.09 · 8:00</div></div>
+    <div class="ticker">
+      <div class="tick"><div class="n">Złoto 1 g</div><div class="v gold">530,05 zł</div><div class="c down">▼ 3,50% m/m</div></div>
+      <div class="tick"><div class="n">WIG20</div><div class="v gold">4 183,77</div><div class="c up">▲ 0,08%</div></div>
+      <div class="tick"><div class="n">S&amp;P 500</div><div class="v gold">7 743,41</div><div class="c up">▲ 0,51%</div></div>
+    </div>
+    <div class="card hero">
+      <h3>🧠 Podsumowanie dnia</h3>
+      <div class="t">Złoto najniżej od 7 tygodni po skoku rentowności obligacji. GPW płasko, Wall Street przy rekordach, Bitcoin traci 2%.</div>
+    </div>
+    <div class="card">
+      <h3><span>🥇 Złoto</span><span class="pill">−10,4% USD m/m</span></h3>
+      <svg class="spark" viewBox="0 0 300 38" preserveAspectRatio="none"><polyline fill="none" stroke="var(--down)" stroke-width="2" points="0,6 30,8 60,5 90,10 120,9 150,14 180,13 210,18 240,22 270,27 300,33"/></svg>
+      <div class="t">Mocna przecena złota i srebra — metale ugięły się pod ciężarem rentowności [bankier.pl]</div>
+    </div>
+    <div class="card">
+      <h3><span>🇵🇱 GPW</span><span class="pill">▲ 0,08%</span></h3>
+      <div class="t">Esotiq −10% po odcięciu dywidendy; PlayWay z mocnymi wynikami przed premierą [comparic.pl]</div>
+    </div>
+    <div class="card">
+      <h3><span>🚨 Scamy</span><span class="pill">2 nowe</span></h3>
+      <div class="t">CERT: fałszywe reklamy i złośliwe aplikacje w social mediach · 4 563 domen „inwestycyjnych” na liście</div>
+    </div>
+  </div>
+  <div class="nav"><div class="on"><span>📊</span>Dziś</div><div><span>🔎</span>Rynki</div><div><span>🛡️</span>Scamy</div><div><span>📁</span>Archiwum</div></div>
+</template>
+
+<script>
+  const warianty = [
+    ['a', 'A · Aurora', 'Granat z miękkimi poświatami (złoto, szmaragd, fiolet), szklane półprzezroczyste karty, delikatne ziarno.'],
+    ['b', 'B · Papier giełdowy', 'Jasne ciepłe tło w kratkę jak papier do wykresów, szeryfowe nagłówki, złote akcenty. Klimat gazety finansowej.'],
+    ['c', 'C · Midnight Gold', 'Prawie czarne tło ze złotą łuną i fakturą ukośnych linii, liczby w złotym gradiencie. Premium.'],
+  ];
+  const tpl = document.getElementById('screen');
+  for (const [cls, tytul, opis] of warianty) {
+    const v = document.createElement('div');
+    v.className = 'variant';
+    v.innerHTML = `<h2>${tytul}</h2><div class="phone"><div class="screen ${cls}"></div></div><p>${opis}</p>`;
+    v.querySelector('.screen').append(tpl.content.cloneNode(true));
+    document.getElementById('row').append(v);
+  }
+</script>
+</body>
+</html>

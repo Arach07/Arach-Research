@@ -10,10 +10,10 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center px-4">
       <form
         action={formAction}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-card p-6"
+        className="card card-hero w-full max-w-sm space-y-4 p-6"
       >
         <div>
-          <h1 className="text-xl font-semibold">Research</h1>
+          <h1 className="text-2xl font-semibold"><span className="gold">Research</span></h1>
           <p className="text-sm text-muted">Zaloguj się, żeby zobaczyć raporty.</p>
         </div>
 
@@ -23,7 +23,7 @@ export default function LoginPage() {
           required
           autoComplete="email"
           placeholder="E-mail"
-          className="w-full rounded-lg border border-line bg-background px-3 py-2"
+          className="w-full rounded-lg border border-line-strong bg-background/60 px-3 py-2.5 outline-none focus:border-accent"
         />
         <input
           name="password"
@@ -31,15 +31,15 @@ export default function LoginPage() {
           required
           autoComplete="current-password"
           placeholder="Hasło"
-          className="w-full rounded-lg border border-line bg-background px-3 py-2"
+          className="w-full rounded-lg border border-line-strong bg-background/60 px-3 py-2.5 outline-none focus:border-accent"
         />
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-down">{error}</p>}
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-lg bg-accent px-3 py-2 font-medium text-white disabled:opacity-60"
+          className="w-full rounded-lg bg-gradient-to-b from-[#f7dd9c] to-accent-deep px-3 py-2.5 font-semibold text-background disabled:opacity-60"
         >
           {pending ? "Logowanie…" : "Zaloguj"}
         </button>

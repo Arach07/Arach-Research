@@ -89,13 +89,9 @@ const workflow = {
     {
       parameters: {
         tableId: 'reports',
-        fieldsUi: {
-          fieldValues: [
-            { fieldId: 'category', fieldValue: '={{ $json.category }}' },
-            { fieldId: 'title', fieldValue: '={{ $json.title }}' },
-            { fieldId: 'content', fieldValue: '={{ $json.content }}' },
-          ],
-        },
+        // Wysyła category, title, content i data (obiekt JSON do kolumny jsonb) bez zamiany na tekst
+        dataToSend: 'autoMapInputData',
+        inputsToIgnore: '',
       },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000004',
       name: 'Zapis do apki',

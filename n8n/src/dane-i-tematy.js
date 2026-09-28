@@ -15,21 +15,35 @@ const fmtPct = (v) =>
 const fmtNum = (v, digits = 2) =>
   v.toLocaleString('pl-PL', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
-// Zmiany z serii zamknięć: 1 sesja, 5 sesji (tydzień), 21 sesji (miesiąc)
-function zmiany(closes) {
-  const last = closes[closes.length - 1];
-  const back = (n) => (closes.length > n ? closes[closes.length - 1 - n] : null);
-  return { last, d1: pct(last, back(1)), d7: pct(last, back(5)), d30: pct(last, back(21)) };
+// Instrument (to widzi apka): wartość, zmiany 1 sesja / 5 sesji (tydzień) / 21 sesji (miesiąc)
+// i seria do wykresu. Seria ma maks. 30 punktów.
+function instrument(nazwa, jednostka, seria, { zrodlo, cyfry = 2, d1, d7, d30 } = {}) {
+  const last = seria[seria.length - 1];
+  const back = (n) => (seria.length > n ? seria[seria.length - 1 - n] : null);
+  return {
+    nazwa,
+    jednostka,
+    wartosc: last,
+    cyfry,
+    d1: d1 !== undefined ? d1 : pct(last, back(1)),
+    d7: d7 !== undefined ? d7 : pct(last, back(5)),
+    d30: d30 !== undefined ? d30 : pct(last, back(21)),
+    seria: seria.slice(-30),
+    zrodlo,
+  };
 }
-const opisZmian = (z) =>
-  `dzień ${fmtPct(z.d1)} | tydzień ${fmtPct(z.d7)} | miesiąc ${fmtPct(z.d30)}`;
+
+const opis = (i) =>
+  i.blad
+    ? `${i.nazwa}: brak danych (${i.blad})`
+    : `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka} | dzień ${fmtPct(i.d1)} | tydzień ${fmtPct(i.d7)} | miesiąc ${fmtPct(i.d30)}`;
 
 // Błąd jednego źródła nie wywala całego raportu
 async function bezpiecznie(nazwa, fn) {
   try {
     return await fn();
   } catch (e) {
-    return [`${nazwa}: brak danych (${e.message})`];
+    return [{ nazwa, blad: e.message }];
   }
 }
 
@@ -37,12 +51,15 @@ async function yahoo(symbol, nazwa, jednostka) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`;
   const r = (await http(url)).chart.result[0];
   const closes = r.indicators.quote[0].close.filter((x) => x != null);
-  if (closes.length > 21) {
-    const z = zmiany(closes);
-    return `${nazwa}: ${fmtNum(z.last)} ${jednostka} | ${opisZmian(z)}`;
-  }
+  const zrodlo = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`;
+  if (closes.length > 21) return instrument(nazwa, jednostka, closes, { zrodlo });
   // Yahoo nie ma historii dla części indeksów GPW, jest tylko zmiana dzienna
-  return `${nazwa}: ${fmtNum(r.meta.regularMarketPrice)} ${jednostka} | dzień ${fmtPct(r.meta.regularMarketChangePercent)}`;
+  return instrument(nazwa, jednostka, [r.meta.regularMarketPrice], {
+    zrodlo,
+    d1: r.meta.regularMarketChangePercent ?? null,
+    d7: null,
+    d30: null,
+  });
 }
 
 // ---------- RSS ----------
@@ -139,20 +156,25 @@ const US = ['cnbc', 'marketwatch', 'yahoo'];
 
 // ---------- Twarde dane ----------
 
-const zloto = await bezpiecznie('Złoto NBP', async () => {
+const zloto = await bezpiecznie('Złoto NBP (1 g)', async () => {
   const g = await http('https://api.nbp.pl/api/cenyzlota/last/30?format=json');
-  const z = zmiany(g.map((x) => x.cena));
   return [
-    `Złoto wg NBP (1 g, notowanie z ${g[g.length - 1].data}): ${fmtNum(z.last)} zł | ${opisZmian(z)}`,
+    instrument('Złoto NBP (1 g)', 'zł', g.map((x) => x.cena), {
+      zrodlo: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json',
+    }),
   ];
 });
-const zlotoUsd = await bezpiecznie('Złoto USD', async () => [
-  await yahoo('GC=F', 'Złoto kontrakty (1 uncja)', 'USD'),
+const zlotoUsd = await bezpiecznie('Złoto (1 uncja)', async () => [
+  await yahoo('GC=F', 'Złoto (1 uncja)', 'USD'),
 ]);
 const usdPln = await bezpiecznie('USD/PLN', async () => {
   const r = (await http('https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json')).rates;
-  const z = zmiany(r.map((x) => x.mid));
-  return [`Kurs USD/PLN wg NBP (${r[r.length - 1].effectiveDate}): ${fmtNum(z.last, 4)} zł | ${opisZmian(z)}`];
+  return [
+    instrument('USD/PLN', 'zł', r.map((x) => x.mid), {
+      cyfry: 4,
+      zrodlo: 'https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json',
+    }),
+  ];
 });
 const gpw = await bezpiecznie('GPW', async () => [
   await yahoo('WIG20.WA', 'WIG20', 'pkt'),
@@ -160,32 +182,49 @@ const gpw = await bezpiecznie('GPW', async () => [
 ]);
 const usa = await bezpiecznie('USA', async () => [
   await yahoo('^GSPC', 'S&P 500', 'pkt'),
-  await yahoo('^IXIC', 'Nasdaq Composite', 'pkt'),
+  await yahoo('^IXIC', 'Nasdaq', 'pkt'),
   await yahoo('^DJI', 'Dow Jones', 'pkt'),
 ]);
 const krypto = await bezpiecznie('CoinGecko', async () => {
   const cg = await http(
-    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=24h,7d,30d',
+    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=24h,7d,30d&sparkline=true',
   );
-  return cg.map(
-    (c) =>
-      `${c.name}: ${fmtNum(c.current_price, 0)} USD | 24h ${fmtPct(c.price_change_percentage_24h_in_currency)} | 7 dni ${fmtPct(c.price_change_percentage_7d_in_currency)} | 30 dni ${fmtPct(c.price_change_percentage_30d_in_currency)}`,
-  );
+  return cg.map((c) => {
+    // sparkline to 7 dni co godzinę — co 6. punkt wystarczy do wykresu
+    const seria = (c.sparkline_in_7d?.price ?? []).filter((_, i) => i % 6 === 0);
+    return instrument(c.name, 'USD', [...seria, c.current_price], {
+      cyfry: 0,
+      zrodlo: `https://www.coingecko.com/pl/waluty/${c.id}`,
+      d1: c.price_change_percentage_24h_in_currency ?? null,
+      d7: c.price_change_percentage_7d_in_currency ?? null,
+      d30: c.price_change_percentage_30d_in_currency ?? null,
+    });
+  });
 });
-const scamy = await bezpiecznie('CERT Polska', async () => {
+
+let cert = null;
+try {
   const lista = (await http('https://hole.cert.pl/domains/v2/domains.txt', false))
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
   const slowa = /invest|inwest|crypto|krypto|bitcoin|btc|gield|broker|trad|zarob|zysk|forex|lewandowski|orlen|pko|pekao|baltic|gpw|knf|nbp/i;
   const finansowe = lista.filter((d) => slowa.test(d));
-  // Lista jest alfabetyczna i bez dat — losujemy przykłady
-  const przyklady = [...finansowe].sort(() => Math.random() - 0.5).slice(0, 15);
-  return [
-    `Lista ostrzeżeń CERT Polska: ${lista.length.toLocaleString('pl-PL')} niebezpiecznych domen, w tym ${finansowe.length.toLocaleString('pl-PL')} z nazwą sugerującą inwestycje/finanse`,
-    `Przykładowe domeny z listy CERT (nie wchodzić!): ${przyklady.join(', ')}`,
-  ];
-});
+  cert = {
+    wszystkie: lista.length,
+    finansowe: finansowe.length,
+    // Lista jest alfabetyczna i bez dat — losujemy przykłady
+    przyklady: [...finansowe].sort(() => Math.random() - 0.5).slice(0, 12),
+  };
+} catch (e) {
+  cert = { blad: e.message };
+}
+const certTekst = cert.blad
+  ? [`Lista CERT Polska: brak danych (${cert.blad})`]
+  : [
+      `Lista ostrzeżeń CERT Polska: ${cert.wszystkie.toLocaleString('pl-PL')} niebezpiecznych domen, w tym ${cert.finansowe.toLocaleString('pl-PL')} z nazwą sugerującą inwestycje/finanse`,
+      `Przykładowe domeny z listy CERT (nie wchodzić!): ${cert.przyklady.join(', ')}`,
+    ];
 
 // ---------- Tematy ----------
 
@@ -193,11 +232,7 @@ const tematy = [
   {
     category: 'zloto',
     title: 'Złoto',
-    dane: [...zloto, ...zlotoUsd, ...usdPln],
-    zrodla: [
-      { nazwa: 'NBP — ceny złota', url: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json' },
-      { nazwa: 'Yahoo Finance — GC=F', url: 'https://finance.yahoo.com/quote/GC=F' },
-    ],
+    instrumenty: [...zloto, ...zlotoUsd, ...usdPln],
     // "złoto/złota/złotu/złocie" = kruszec; "złoty/złotego/złotówka" = waluta — tej nie chcemy
     newsy: await newsy([...PL, ...US], /\bz[łl]ot[oau]\b|z[łl]ocie|\bgold\b|kruszc|szlachetn|srebr|silver/i, 72),
     prompt: 'Złoto: co napędza ostatnie ruchy ceny, najważniejsze newsy, prognozy banków i analityków (kto i jaki poziom).',
@@ -205,8 +240,7 @@ const tematy = [
   {
     category: 'gpw',
     title: 'GPW',
-    dane: [...gpw, ...usdPln],
-    zrodla: [{ nazwa: 'Yahoo Finance — WIG20', url: 'https://finance.yahoo.com/quote/WIG20.WA' }],
+    instrumenty: [...gpw, ...usdPln],
     newsy: await newsy(
       ['bankierGielda', ...PL],
       /gpw|wig|giełd|gield|spółk|spolk|akcj|dywidend|notowa|rekomend|emisj|makler/i,
@@ -216,8 +250,7 @@ const tematy = [
   {
     category: 'usa',
     title: 'Rynek USA',
-    dane: usa,
-    zrodla: [{ nazwa: 'Yahoo Finance — S&P 500', url: 'https://finance.yahoo.com/quote/%5EGSPC' }],
+    instrumenty: usa,
     newsy: await newsy(
       US,
       /fed|s&p|nasdaq|dow|stock|wall street|earnings|inflation|rate|market|treasur|yield|tariff|economy|shares/i,
@@ -227,16 +260,16 @@ const tematy = [
   {
     category: 'krypto',
     title: 'Krypto',
-    dane: krypto,
-    zrodla: [{ nazwa: 'CoinGecko', url: 'https://www.coingecko.com/' }],
+    instrumenty: krypto,
     newsy: await newsy(['coindesk', 'cointelegraph', ...PL], /bitcoin|btc|ethereum|eth|krypto|crypto|etf|stablecoin|blockchain/i),
     prompt: 'Kryptowaluty: najważniejsze wydarzenia i trendy (regulacje, ETF-y, duże przepływy), prognozy analityków dla Bitcoina i Ethereum.',
   },
   {
     category: 'scamy',
     title: 'Ostrzeżenia przed scamami',
-    dane: scamy,
-    zrodla: [{ nazwa: 'CERT Polska — lista ostrzeżeń', url: 'https://cert.pl/lista-ostrzezen/' }],
+    instrumenty: [],
+    dodatkowe: certTekst,
+    cert,
     newsy: await newsy(
       ['cert', 'sekurak', ...PL],
       /oszust|oszuk|scam|fałszyw|falszyw|wyłudz|wyludz|phishing|podszyw|ostrzeż|ostrzez|piramid/i,
@@ -245,6 +278,20 @@ const tematy = [
     prompt: 'Oszustwa inwestycyjne i finansowe w Polsce z ostatnich 7 dni: nowe schematy (np. fałszywe artykuły z celebrytami, "platformy AI", fałszywi doradcy), ostrzeżenia CERT/KNF/policji, jak się chronić.',
   },
 ];
+
+// Podsumowanie dnia: kluczowe liczby + po 2 najnowsze newsy z każdego tematu
+const pierwszy = (lista) => lista.filter((i) => !i.blad).slice(0, 1);
+const newsyDnia = tematy
+  .flatMap((t) => t.newsy.slice(0, 2))
+  .map((n, i) => ({ ...n, nr: i + 1 }));
+tematy.push({
+  category: 'dzien',
+  title: 'Podsumowanie dnia',
+  instrumenty: [...pierwszy(zloto), ...pierwszy(gpw), ...pierwszy(usa), ...pierwszy(krypto), ...pierwszy(usdPln)],
+  newsy: newsyDnia,
+  prompt:
+    'Podsumowanie dnia na rynkach. WYJĄTEK od zasad o punktach: napisz tylko 2-3 krótkie zdania ciągłym tekstem, bez myślników i bez "Podsumowanie:", z numerami źródeł. Najważniejsze najpierw.',
+});
 
 const dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });
 const godz = (iso) =>
@@ -263,7 +310,7 @@ return tematy.map((t) => ({
     ...t,
     title: `${t.title} — ${dzis}`,
     dzis,
-    daneTekst: t.dane.map((d) => '- ' + d).join('\n'),
+    daneTekst: [...t.instrumenty.map(opis), ...(t.dodatkowe ?? [])].map((d) => '- ' + d).join('\n') || '- brak',
     newsyTekst: t.newsy.length
       ? t.newsy.map((n) => `[${n.nr}] ${godz(n.data)} ${n.domena} — ${n.tytul}. ${n.opis}`).join('\n')
       : 'Brak newsów na ten temat w zaufanych kanałach RSS.',

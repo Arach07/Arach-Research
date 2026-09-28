@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Codzienne raporty: giełda, złoto, krypto i ostrzeżenia przed scamami",
     start_url: "/",
     display: "standalone",
-    background_color: "#0b0f14",
-    theme_color: "#0b0f14",
+    background_color: "#07070a",
+    theme_color: "#07070a",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
   };
 }

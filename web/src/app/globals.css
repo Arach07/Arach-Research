@@ -1,38 +1,96 @@
 @import "tailwindcss";
 
+/* Midnight Gold — ciemny motyw premium: czerń, złota łuna, ukośna faktura */
 :root {
-  --background: #f6f7f9;
-  --foreground: #11161d;
-  --card: #ffffff;
-  --line: #e2e5ea;
-  --muted: #667085;
-  --accent: #c98a12;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0f14;
-    --foreground: #e8ebef;
-    --card: #131922;
-    --line: #232b36;
-    --muted: #8b95a3;
-    --accent: #f5b83d;
-  }
+  color-scheme: dark;
+  --background: #07070a;
+  --foreground: #efe9dc;
+  --card: #111016;
+  --card-2: #0c0b10;
+  --line: rgb(214 168 72 / 0.18);
+  --line-strong: rgb(214 168 72 / 0.4);
+  --muted: #9a9384;
+  --accent: #e7c276;
+  --accent-deep: #c9983a;
+  --up: #7ee0a8;
+  --down: #f08a7e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-2: var(--card-2);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-deep: var(--accent-deep);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tło: złota łuna u góry + delikatne ukośne linie. Stałe przy przewijaniu. */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(70% 38% at 50% -6%, rgb(214 168 72 / 0.34), transparent 70%),
+    radial-gradient(40% 30% at 100% 100%, rgb(214 168 72 / 0.06), transparent 70%),
+    repeating-linear-gradient(135deg, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 9px);
+}
+
+@layer components {
+  .gold {
+    background: linear-gradient(180deg, #f7dd9c, #c9983a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    border-radius: 1.25rem;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--card), var(--card-2));
+  }
+
+  .card-hero {
+    border-color: rgb(214 168 72 / 0.5);
+    box-shadow:
+      0 0 0 1px rgb(214 168 72 / 0.12),
+      0 12px 36px rgb(214 168 72 / 0.1);
+  }
+
+  .chip {
+    border-radius: 9999px;
+    background: rgb(214 168 72 / 0.14);
+    color: var(--accent);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .tabular {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Ukryty pasek przewijania w poziomym pasku kursów */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
