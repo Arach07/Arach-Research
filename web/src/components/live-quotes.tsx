@@ -6,19 +6,40 @@ import type { LiveQuotes } from "@/lib/quotes";
 import type { Instrument } from "@/lib/reports";
 
 const QUOTES_EVERY_MS = 20_000;
-// Raporty (komentarze AI, newsy) zmieniają się 3 razy dziennie — po powrocie do apki
-// odświeżamy je najwyżej co 5 minut, żeby nie zużywać limitu transferu Supabase
-const REPORTS_MIN_GAP_MS = 5 * 60_000;
+// Co minutę pytamy tylko o DATĘ najnowszego raportu (~100 bajtów). Pełne raporty pobieramy
+// dopiero, gdy n8n doda nowy — dzięki temu limit transferu Supabase praktycznie się nie zużywa.
+const NEW_REPORT_CHECK_MS = 60_000;
 
 const LiveQuotesContext = createContext<LiveQuotes | null>(null);
 
-export function LiveQuotesProvider({ initial, children }: { initial: LiveQuotes; children: React.ReactNode }) {
+export function LiveQuotesProvider({
+  initial,
+  latestReportAt,
+  children,
+}: {
+  initial: LiveQuotes;
+  latestReportAt: string | null;
+  children: React.ReactNode;
+}) {
   const [quotes, setQuotes] = useState(initial);
   const router = useRouter();
-  const lastReportsRefresh = useRef(0);
+  const knownReportAt = useRef(latestReportAt);
 
   useEffect(() => {
-    lastReportsRefresh.current = Date.now();
+    const checkNewReport = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const response = await fetch("/api/najnowszy-raport", { cache: "no-store" });
+        if (!response.ok) return;
+        const { latest } = (await response.json()) as { latest: string | null };
+        if (latest && latest !== knownReportAt.current) {
+          knownReportAt.current = latest;
+          router.refresh();
+        }
+      } catch {
+        // brak sieci — sprawdzimy przy następnej okazji
+      }
+    };
 
     const loadQuotes = async () => {
       if (document.visibilityState !== "visible") return;
@@ -30,19 +51,19 @@ export function LiveQuotesProvider({ initial, children }: { initial: LiveQuotes;
       }
     };
 
+    // Po powrocie do apki — od razu świeże kursy i sprawdzenie, czy jest nowy raport
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       loadQuotes();
-      if (Date.now() - lastReportsRefresh.current > REPORTS_MIN_GAP_MS) {
-        lastReportsRefresh.current = Date.now();
-        router.refresh();
-      }
+      checkNewReport();
     };
 
-    const id = window.setInterval(loadQuotes, QUOTES_EVERY_MS);
+    const quotesTimer = window.setInterval(loadQuotes, QUOTES_EVERY_MS);
+    const reportTimer = window.setInterval(checkNewReport, NEW_REPORT_CHECK_MS);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      window.clearInterval(id);
+      window.clearInterval(quotesTimer);
+      window.clearInterval(reportTimer);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [router]);

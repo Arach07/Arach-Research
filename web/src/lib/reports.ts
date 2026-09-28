@@ -85,6 +85,18 @@ export function latestByCategory(reports: Report[]) {
   return latest;
 }
 
+// Data najnowszego raportu — lekkie zapytanie do sprawdzania, czy są nowe raporty
+export async function latestReportAt() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select("created_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ created_at: string }>();
+  return data?.created_at ?? null;
+}
+
 export async function reportById(id: number) {
   const supabase = await createClient();
   const { data } = await supabase.from("reports").select("*").eq("id", id).maybeSingle<Report>();
