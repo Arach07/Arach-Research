@@ -1,5 +1,5 @@
-// Klocek "Dane i tematy": pobiera twarde dane z API i buduje listę tematów raportu.
-// Nowy temat = nowa pozycja w tablicy `tematy` na dole.
+// Klocek "Dane i tematy": pobiera twarde dane z API i newsy z RSS zaufanych portali,
+// a potem buduje listę tematów raportu. Nowy temat = nowa pozycja w tablicy `tematy` na dole.
 
 const http = (url, json = true) =>
   this.helpers.httpRequest({
@@ -44,6 +44,100 @@ async function yahoo(symbol, nazwa, jednostka) {
   // Yahoo nie ma historii dla części indeksów GPW, jest tylko zmiana dzienna
   return `${nazwa}: ${fmtNum(r.meta.regularMarketPrice)} ${jednostka} | dzień ${fmtPct(r.meta.regularMarketChangePercent)}`;
 }
+
+// ---------- RSS ----------
+
+const RSS = {
+  bankier: 'https://www.bankier.pl/rss/wiadomosci.xml',
+  bankierGielda: 'https://www.bankier.pl/rss/gielda.xml',
+  money: 'https://www.money.pl/rss/rss.xml',
+  parkiet: 'https://www.parkiet.com/rss_main',
+  pb: 'https://www.pb.pl/rss/najnowsze.xml',
+  insider: 'https://businessinsider.com.pl/gielda.feed',
+  comparic: 'https://comparic.pl/feed/',
+  cnbc: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
+  marketwatch: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
+  yahoo: 'https://finance.yahoo.com/news/rssindex',
+  coindesk: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
+  cointelegraph: 'https://cointelegraph.com/rss',
+  cert: 'https://cert.pl/feed/',
+  sekurak: 'https://sekurak.pl/feed/',
+};
+
+const encje = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+const czysc = (s = '') =>
+  s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-z]+);/gi, (m, n) => encje[n.toLowerCase()] ?? m)
+    .replace(/\s+/g, ' ')
+    .trim();
+const tag = (xml, nazwa) => xml.match(new RegExp(`<${nazwa}[^>]*>([\\s\\S]*?)</${nazwa}>`, 'i'))?.[1];
+
+const kanaly = {};
+async function pobierzKanal(klucz) {
+  if (!kanaly[klucz]) {
+    kanaly[klucz] = (async () => {
+      try {
+        const xml = await http(RSS[klucz], false);
+        return xml
+          .split(/<item[\s>]/i)
+          .slice(1)
+          .map((it) => {
+            const link = czysc(tag(it, 'link') ?? tag(it, 'guid'));
+            const data = new Date(czysc(tag(it, 'pubDate') ?? tag(it, 'dc:date') ?? ''));
+            return {
+              tytul: czysc(tag(it, 'title')),
+              opis: czysc(tag(it, 'description')).slice(0, 220),
+              link,
+              data: Number.isNaN(data.getTime()) ? null : data,
+              domena: (() => {
+                try {
+                  return new URL(link).hostname.replace(/^www\./, '');
+                } catch {
+                  return klucz;
+                }
+              })(),
+            };
+          })
+          .filter((n) => n.tytul && /^https?:\/\//.test(n.link));
+      } catch {
+        return []; // kanał nie odpowiada — pomijamy
+      }
+    })();
+  }
+  return kanaly[klucz];
+}
+
+// Newsy z wybranych kanałów, z ostatnich `godzin`, opcjonalnie tylko pasujące do `filtr`.
+// Maks. 3 newsy z jednego portalu, żeby źródła były różnorodne.
+async function newsy(klucze, filtr, godzin = 48, limit = 12, naPortal = 3) {
+  const od = Date.now() - godzin * 3600 * 1000;
+  const wszystkie = (await Promise.all(klucze.map(pobierzKanal))).flat();
+  const widziane = new Set();
+  const naDomene = {};
+  return wszystkie
+    .filter((n) => !n.data || n.data.getTime() >= od)
+    .filter((n) => !filtr || filtr.test(n.tytul + ' ' + n.opis))
+    .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0))
+    .filter((n) => {
+      // Ten sam artykuł bywa w kilku kanałach z innym ?utm_... w linku
+      const klucz = n.link.split('?')[0];
+      if (widziane.has(klucz) || widziane.has(n.tytul)) return false;
+      widziane.add(klucz).add(n.tytul);
+      naDomene[n.domena] = (naDomene[n.domena] ?? 0) + 1;
+      return naDomene[n.domena] <= naPortal;
+    })
+    .slice(0, limit)
+    .map((n, i) => ({ ...n, nr: i + 1, data: n.data?.toISOString() ?? null }));
+}
+
+const PL = ['bankier', 'money', 'parkiet', 'pb', 'insider', 'comparic'];
+const US = ['cnbc', 'marketwatch', 'yahoo'];
+
+// ---------- Twarde dane ----------
 
 const zloto = await bezpiecznie('Złoto NBP', async () => {
   const g = await http('https://api.nbp.pl/api/cenyzlota/last/30?format=json');
@@ -93,6 +187,8 @@ const scamy = await bezpiecznie('CERT Polska', async () => {
   ];
 });
 
+// ---------- Tematy ----------
+
 const tematy = [
   {
     category: 'zloto',
@@ -102,27 +198,38 @@ const tematy = [
       { nazwa: 'NBP — ceny złota', url: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json' },
       { nazwa: 'Yahoo Finance — GC=F', url: 'https://finance.yahoo.com/quote/GC=F' },
     ],
-    prompt: 'Złoto: co napędza ostatnie ruchy ceny, najważniejsze newsy, najnowsze prognozy banków i analityków (kto i jaki poziom).',
+    // "złoto/złota/złotu/złocie" = kruszec; "złoty/złotego/złotówka" = waluta — tej nie chcemy
+    newsy: await newsy([...PL, ...US], /\bz[łl]ot[oau]\b|z[łl]ocie|\bgold\b|kruszc|szlachetn|srebr|silver/i, 72),
+    prompt: 'Złoto: co napędza ostatnie ruchy ceny, najważniejsze newsy, prognozy banków i analityków (kto i jaki poziom).',
   },
   {
     category: 'gpw',
     title: 'GPW',
     dane: [...gpw, ...usdPln],
     zrodla: [{ nazwa: 'Yahoo Finance — WIG20', url: 'https://finance.yahoo.com/quote/WIG20.WA' }],
-    prompt: 'Giełda w Warszawie: najważniejsze newsy o spółkach (wyniki, dywidendy, komunikaty), największe wzrosty i spadki, rekomendacje domów maklerskich.',
+    newsy: await newsy(
+      ['bankierGielda', ...PL],
+      /gpw|wig|giełd|gield|spółk|spolk|akcj|dywidend|notowa|rekomend|emisj|makler/i,
+    ),
+    prompt: 'Giełda w Warszawie: najważniejsze newsy o spółkach (wyniki, dywidendy, komunikaty), wzrosty i spadki, rekomendacje domów maklerskich.',
   },
   {
     category: 'usa',
     title: 'Rynek USA',
     dane: usa,
     zrodla: [{ nazwa: 'Yahoo Finance — S&P 500', url: 'https://finance.yahoo.com/quote/%5EGSPC' }],
-    prompt: 'Rynek akcji w USA: najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków na najbliższe dni.',
+    newsy: await newsy(
+      US,
+      /fed|s&p|nasdaq|dow|stock|wall street|earnings|inflation|rate|market|treasur|yield|tariff|economy|shares/i,
+    ),
+    prompt: 'Rynek akcji w USA: najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków.',
   },
   {
     category: 'krypto',
     title: 'Krypto',
     dane: krypto,
     zrodla: [{ nazwa: 'CoinGecko', url: 'https://www.coingecko.com/' }],
+    newsy: await newsy(['coindesk', 'cointelegraph', ...PL], /bitcoin|btc|ethereum|eth|krypto|crypto|etf|stablecoin|blockchain/i),
     prompt: 'Kryptowaluty: najważniejsze wydarzenia i trendy (regulacje, ETF-y, duże przepływy), prognozy analityków dla Bitcoina i Ethereum.',
   },
   {
@@ -130,12 +237,35 @@ const tematy = [
     title: 'Ostrzeżenia przed scamami',
     dane: scamy,
     zrodla: [{ nazwa: 'CERT Polska — lista ostrzeżeń', url: 'https://cert.pl/lista-ostrzezen/' }],
-    prompt: 'Nowe oszustwa inwestycyjne w Polsce z ostatnich 7 dni: ostrzeżenia CERT Polska, KNF (lista ostrzeżeń publicznych), policji, Niebezpiecznika, Sekuraka. Nazwy fałszywych platform, schematy działania (np. fałszywe artykuły z celebrytami, "platforma AI"), jak się chronić.',
+    newsy: await newsy(
+      ['cert', 'sekurak', ...PL],
+      /oszust|oszuk|scam|fałszyw|falszyw|wyłudz|wyludz|phishing|podszyw|ostrzeż|ostrzez|piramid/i,
+      24 * 7,
+    ),
+    prompt: 'Oszustwa inwestycyjne i finansowe w Polsce z ostatnich 7 dni: nowe schematy (np. fałszywe artykuły z celebrytami, "platformy AI", fałszywi doradcy), ostrzeżenia CERT/KNF/policji, jak się chronić.',
   },
 ];
 
 const dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });
+const godz = (iso) =>
+  iso
+    ? new Date(iso).toLocaleString('pl-PL', {
+        timeZone: 'Europe/Warsaw',
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
 
 return tematy.map((t) => ({
-  json: { ...t, title: `${t.title} — ${dzis}`, dzis, daneTekst: t.dane.map((d) => '- ' + d).join('\n') },
+  json: {
+    ...t,
+    title: `${t.title} — ${dzis}`,
+    dzis,
+    daneTekst: t.dane.map((d) => '- ' + d).join('\n'),
+    newsyTekst: t.newsy.length
+      ? t.newsy.map((n) => `[${n.nr}] ${godz(n.data)} ${n.domena} — ${n.tytul}. ${n.opis}`).join('\n')
+      : 'Brak newsów na ten temat w zaufanych kanałach RSS.',
+  },
 }));

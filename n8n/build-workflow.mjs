@@ -8,12 +8,11 @@ const src = (f) => fs.readFileSync(new URL(`src/${f}`, dir), 'utf8');
 const SYSTEM = `Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe raporty po polsku dla inwestora indywidualnego.
 
 Zasady:
-- Liczby z sekcji TWARDE DANE są pewne (pochodzą z API). Używaj tylko ich dla tych instrumentów. Jeśli wyszukiwarka podaje inne wartości, ufaj twardym danym.
-- Newsy i prognozy bierz z wyszukiwarki Google, z ostatnich 24-48 godzin (dla oszustw z ostatnich 7 dni).
-- Po każdej informacji z wyszukiwarki podaj w nawiasie domenę źródła, np. (bankier.pl).
-- Prognozy tylko cytowane od analityków lub instytucji, z nazwą autora. Nigdy nie wymyślaj własnych prognoz ani liczb.
-- Nie cytuj stron, które wyglądają na reklamy inwestycyjne, "platformy AI" albo obiecują zyski.
-- Jeśli czegoś nie znalazłeś, napisz to wprost zamiast zgadywać.
+- Korzystaj WYŁĄCZNIE z sekcji TWARDE DANE i NEWSY. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.
+- Liczby z TWARDE DANE są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.
+- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].
+- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.
+- Jeśli newsów na dany temat brakuje, napisz to wprost.
 - 5-8 punktów, każdy zaczyna się od "- ". Na końcu jedno zdanie zaczynające się od "Podsumowanie:".
 - Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.`;
 
@@ -43,25 +42,26 @@ const workflow = {
           values: [
             {
               content:
-                '=Dzisiaj jest {{ $json.dzis }}.\n\nTWARDE DANE:\n{{ $json.daneTekst }}\n\nTEMAT RAPORTU:\n{{ $json.prompt }}',
+                '=Dzisiaj jest {{ $json.dzis }}.\n\nTEMAT RAPORTU:\n{{ $json.prompt }}\n\nTWARDE DANE:\n{{ $json.daneTekst }}\n\nNEWSY (z zaufanych portali, numerowane):\n{{ $json.newsyTekst }}',
             },
           ],
         },
-        builtInTools: { googleSearch: true },
         options: { includeMergedResponse: true, systemMessage: SYSTEM },
       },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000003',
-      name: 'Gemini + Google Search',
+      name: 'Gemini',
       type: '@n8n/n8n-nodes-langchain.googleGemini',
       typeVersion: 1.2,
       position: [680, 220],
       retryOnFail: true,
-      maxTries: 3,
+      maxTries: 2,
       waitBetweenTries: 5000,
+      // Gdy Gemini nie odpowie (np. limit), raport powstaje bez komentarza AI
+      onError: 'continueRegularOutput',
       credentials: { googlePalmApi: { name: 'Google Gemini(PaLM) Api account' } },
     },
     {
-      // Darmowy Gemini pozwala na kilka zapytań z wyszukiwaniem na minutę — tematy idą po kolei
+      // Darmowy Gemini ma limit zapytań na minutę — tematy idą po kolei z pauzą
       parameters: { batchSize: 1, options: {} },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000006',
       name: 'Po kolei',
@@ -70,9 +70,9 @@ const workflow = {
       position: [440, 0],
     },
     {
-      parameters: { resume: 'timeInterval', amount: 20, unit: 'seconds' },
+      parameters: { resume: 'timeInterval', amount: 10, unit: 'seconds' },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000007',
-      name: 'Pauza 20 s',
+      name: 'Pauza 10 s',
       type: 'n8n-nodes-base.wait',
       typeVersion: 1.1,
       position: [920, 220],
@@ -112,11 +112,11 @@ const workflow = {
     'Po kolei': {
       main: [
         [{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }],
-        [{ node: 'Gemini + Google Search', type: 'main', index: 0 }],
+        [{ node: 'Gemini', type: 'main', index: 0 }],
       ],
     },
-    'Gemini + Google Search': { main: [[{ node: 'Pauza 20 s', type: 'main', index: 0 }]] },
-    'Pauza 20 s': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
+    'Gemini': { main: [[{ node: 'Pauza 10 s', type: 'main', index: 0 }]] },
+    'Pauza 10 s': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
     'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
   },
   settings: { executionOrder: 'v1' },
