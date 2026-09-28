@@ -156,6 +156,7 @@ Gdy będziesz chciał, żeby n8n działał niezależnie: dwuklik na `n8n/start-n
 1. [ ] **Wgrać NAJNOWSZY workflow** z `n8n/raport-dzienny.json` (**5 modeli + do 3 rund z pauzą 60 s**): w n8n Ctrl+A, Delete, wklej, sprawdź **Credential** w 5 klockach modeli i w „Zapis do apki”, Ctrl+S.
 2. [ ] **Publish** (prawy górny róg), żeby harmonogram 9:00/14:00/20:00 działał. W nowej wersji nie ma już testowej reguły 16:30.
 3. [ ] **Sprawdzić raport z 20:00:** w apce „Komentarze z raportu: pon. 20:00” i czy jest komentarz AI. Jeśli nie, n8n, Executions, uruchomienie z 20:00, screen czerwonych klocków i treść błędu (429 = limit, 503 = przeciążenie).
+3a. [ ] **Później: model spoza Google na końcu łańcucha**, żeby awaria Google (28.09 od ok. 16:30 wszystkie 5 modeli dawało 503) nie zostawiała raportu bez komentarza. Kandydaci darmowi: **Groq** (modele Llama, bez karty, bardzo szybki) albo **OpenRouter** (darmowe modele). Uwaga: **Groq ≠ Grok** — Grok to model firmy xAI (płatny API), Groq to darmowa platforma z modelami open source. Potrzebne: konto + klucz API, w n8n klocek HTTP Request albo gotowy klocek Groq.
 4. [ ] Decyzja: dołożyć `gemini-3.8-flash` jako 6. model przed Gemmą? (propozycja Claude'a, jedna linijka w `MODELE`).
 5. [ ] Jeśli n8n ma działać bez otwartego Claude Code: `start-n8n.cmd` + **autostart** (Win+R, `shell:startup`, skrót do `start-n8n.cmd`).
 6. [x] Uśpienie komputera: potwierdzone, że komputer nie usypia się sam (tylko blokuje ekran). Nic nie trzeba zmieniać.
