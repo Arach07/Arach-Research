@@ -136,12 +136,12 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 ## 6. NA CZYM SKOŃCZYLIŚMY: zadania do zrobienia
 
 ### A. Teraz, na komputerze w pracy (chodzi 24 h)
-1. [ ] Napisać Claude'owi **„przełącz”**. Wyłączy n8n uruchomione z rozmowy, które zgaśnie po zamknięciu sesji.
-2. [ ] Dwuklik na `Desktop\ResearchApp\n8n\start-n8n.cmd` i poczekać na „Editor is now accessible”. **Okna nie zamykać.**
-3. [ ] W n8n: Ctrl+A, potem Delete, potem wkleić zawartość `n8n/raport-dzienny.json` (z harmonogramem 9/14/20 i jednym zapytaniem do Gemini).
-4. [ ] Sprawdzić credentiale w klockach **Gemini** i **Zapis do apki**, potem Ctrl+S.
-5. [ ] Kliknąć **Publish** (prawy górny róg). **Bez tego harmonogram nie ruszy.**
-6. [ ] Raz odpalić ręcznie (**Execute workflow**) i sprawdzić apkę: czy są wykresy, podsumowanie dnia i przypisy.
+1. [x] Napisać Claude'owi **„przełącz”**. Wyłączy n8n uruchomione z rozmowy, które zgaśnie po zamknięciu sesji. ✅ 28.09: n8n działa w osobnym oknie start-n8n.cmd.
+2. [x] Dwuklik na `Desktop\ResearchApp\n8n\start-n8n.cmd` i poczekać na „Editor is now accessible”. **Okna nie zamykać.**
+3. [x] W n8n: Ctrl+A, potem Delete, potem wkleić zawartość `n8n/raport-dzienny.json` (z harmonogramem 9/14/20 i jednym zapytaniem do Gemini).
+4. [x] Sprawdzić credentiale w klockach **Gemini** i **Zapis do apki**, potem Ctrl+S.
+5. [ ] Kliknąć **Publish** (prawy górny róg). **Bez tego harmonogram nie ruszy.** ⚠️ sprawdzić, czy jest włączony.
+6. [x] Raz odpalić ręcznie (**Execute workflow**) i sprawdzić apkę: czy są wykresy, podsumowanie dnia i przypisy. ✅ 28.09: działa, komentarz napisał Gemini 3 (1 i 2 miały limit).
 7. [ ] Autostart: Win+R, wpisać `shell:startup`, wrzucić tam **skrót** do `start-n8n.cmd`.
 8. [x] **Supabase → SQL Editor:** wkleić i uruchomić `supabase/cleanup.sql` (automatyczne usuwanie raportów starszych niż 30 dni). ✅ zrobione 28.09.
 9. [ ] Uśpienie komputera: Ustawienia, System, Zasilanie, **Nigdy**.
