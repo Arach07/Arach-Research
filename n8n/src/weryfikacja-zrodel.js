@@ -15,15 +15,25 @@ function naLiscieCert(domena) {
   return czesci.slice(0, -1).some((_, i) => cert.has(czesci.slice(i).join('.')));
 }
 
-// Pętla zachowuje kolejność, więc i-ta odpowiedź Gemini = i-ty temat
-const tematy = $('Dane i tematy').all();
+// Jedna odpowiedź Gemini z komentarzami do wszystkich tematów: { "zloto": "...", "gpw": "...", ... }
+// Przy błędzie (np. limit) odpowiedzi nie ma — raporty powstają bez komentarza AI.
+let komentarze = {};
+try {
+  const tekst = ($input.first()?.json.mergedResponse ?? '')
+    .trim()
+    .replace(/^```(?:json)?\s*|\s*```$/g, '');
+  if (tekst) komentarze = JSON.parse(tekst);
+} catch {
+  komentarze = {};
+}
 
-return $input.all().map((item, i) => {
-  const temat = tematy[i].json;
+return $('Dane i tematy').all().map((item, i) => {
+  const temat = item.json;
   const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));
   const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];
 
-  const komentarz = (item.json.mergedResponse ?? '').trim() || null;
+  const surowy = komentarze[temat.category];
+  const komentarz = (typeof surowy === 'string' ? surowy : '').trim() || null;
   const numery = new Set([...(komentarz ?? '').matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
   const zNumerami = newsy.map((n) => ({
     nr: n.nr,

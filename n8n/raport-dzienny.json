@@ -18,13 +18,13 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 8,13,18 * * *"
+              "expression": "0 9,14,20 * * *"
             }
           ]
         }
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000009",
-      "name": "Harmonogram 8/13/18",
+      "name": "Harmonogram 9/14/20",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -47,6 +47,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Klocek \"Jeden prompt\": skleja wszystkie tematy w JEDNO zapytanie do Gemini.\n// Darmowy Gemini ma mały dzienny limit zapytań — 1 zapytanie na raport zamiast 6.\n// Gemini odpowiada obiektem JSON: { \"zloto\": \"komentarz...\", \"gpw\": \"...\", ... }.\n\nconst tematy = $input.all().map((item) => item.json);\n\nconst sekcje = tematy.map(\n  (t) => `=== TEMAT: ${t.category} ===\nZADANIE: ${t.prompt}\n\nTWARDE DANE:\n${t.daneTekst}\n\nNEWSY (numeracja tylko w obrębie tego tematu):\n${t.newsyTekst}`,\n);\n\nconst klucze = tematy.map((t) => `\"${t.category}\"`).join(', ');\n\nreturn [\n  {\n    json: {\n      prompt: `Dzisiaj jest ${tematy[0]?.dzis ?? ''}.\n\nPrzygotuj komentarze do ${tematy.length} tematów poniżej. Odpowiedz WYŁĄCZNIE obiektem JSON z kluczami ${klucze}.\nWartością każdego klucza jest komentarz do danego tematu jako zwykły tekst (znaki nowej linii jako \\\\n).\nNumery źródeł [n] w komentarzu odnoszą się do newsów z TEGO SAMEGO tematu.\n\n${sekcje.join('\\n\\n')}`,\n    },\n  },\n];\n"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000006",
+      "name": "Jeden prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "id",
@@ -55,13 +68,14 @@
         "messages": {
           "values": [
             {
-              "content": "=Dzisiaj jest {{ $json.dzis }}.\n\nTEMAT RAPORTU:\n{{ $json.prompt }}\n\nTWARDE DANE:\n{{ $json.daneTekst }}\n\nNEWSY (z zaufanych portali, numerowane):\n{{ $json.newsyTekst }}"
+              "content": "={{ $json.prompt }}"
             }
           ]
         },
+        "jsonOutput": true,
         "options": {
           "includeMergedResponse": true,
-          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe raporty po polsku dla inwestora indywidualnego.\n\nZasady:\n- Korzystaj WYŁĄCZNIE z sekcji TWARDE DANE i NEWSY. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDE DANE są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- 5-8 punktów, każdy zaczyna się od \"- \". Na końcu jedno zdanie zaczynające się od \"Podsumowanie:\".\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *."
+          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
         }
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000003",
@@ -69,11 +83,11 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        680,
-        220
+        660,
+        0
       ],
       "retryOnFail": true,
-      "maxTries": 2,
+      "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
       "credentials": {
@@ -84,44 +98,14 @@
     },
     {
       "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000006",
-      "name": "Po kolei",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        440,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "resume": "timeInterval",
-        "amount": 10,
-        "unit": "seconds"
-      },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000007",
-      "name": "Pauza 10 s",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        920,
-        220
-      ],
-      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000008"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza linki na liście CERT Polska i składa raport dla apki:\n// - content: pełny tekst (komentarz AI + twarde dane + źródła) — zapasowo i do archiwum,\n// - data: uporządkowane dane (instrumenty z wykresami, newsy, komentarz) — z tego rysuje apka.\n// Gdy Gemini nie odpowie (np. limit), raport i tak powstaje — z danymi i nagłówkami newsów.\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction naLiscieCert(domena) {\n  const czesci = domena.toLowerCase().split('.');\n  return czesci.slice(0, -1).some((_, i) => cert.has(czesci.slice(i).join('.')));\n}\n\n// Pętla zachowuje kolejność, więc i-ta odpowiedź Gemini = i-ty temat\nconst tematy = $('Dane i tematy').all();\n\nreturn $input.all().map((item, i) => {\n  const temat = tematy[i].json;\n  const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));\n  const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];\n\n  const komentarz = (item.json.mergedResponse ?? '').trim() || null;\n  const numery = new Set([...(komentarz ?? '').matchAll(/\\[(\\d+)\\]/g)].map((m) => Number(m[1])));\n  const zNumerami = newsy.map((n) => ({\n    nr: n.nr,\n    tytul: n.tytul,\n    opis: n.opis,\n    link: n.link,\n    domena: n.domena,\n    data: n.data,\n    cytowany: numery.has(n.nr),\n  }));\n\n  // Tekst — dla archiwum i starszych widoków\n  const cytowane = zNumerami.filter((n) => n.cytowany);\n  const doListy = cytowane.length ? cytowane : zNumerami.slice(0, 8);\n  const sekcje = [\n    komentarz ??\n      '⚠️ Komentarz AI niedostępny (limit Gemini). Najważniejsze nagłówki:\\n' +\n        zNumerami.slice(0, 8).map((n) => `- [${n.nr}] ${n.tytul} (${n.domena})`).join('\\n'),\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n  ];\n  const zrodlaDanych = temat.instrumenty.filter((x) => x.zrodlo);\n  if (zrodlaDanych.length) {\n    sekcje.push('Źródła danych:\\n' + zrodlaDanych.map((x) => `- 📊 ${x.nazwa} ${x.zrodlo}`).join('\\n'));\n  }\n  if (doListy.length) {\n    sekcje.push('Źródła newsów:\\n' + doListy.map((n) => `- [${n.nr}] ${n.domena} — ${n.tytul} ${n.link}`).join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone (lista ostrzeżeń CERT Polska): ' + odrzucone.join(', '));\n  }\n\n  return {\n    json: {\n      category: temat.category,\n      title: temat.title,\n      content: sekcje.join('\\n\\n'),\n      data: {\n        wersja: 2,\n        komentarz,\n        instrumenty: temat.instrumenty,\n        newsy: zNumerami,\n        odrzucone,\n        ...(temat.cert ? { cert: temat.cert } : {}),\n      },\n    },\n    pairedItem: { item: i },\n  };\n});\n"
+        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza linki na liście CERT Polska i składa raport dla apki:\n// - content: pełny tekst (komentarz AI + twarde dane + źródła) — zapasowo i do archiwum,\n// - data: uporządkowane dane (instrumenty z wykresami, newsy, komentarz) — z tego rysuje apka.\n// Gdy Gemini nie odpowie (np. limit), raport i tak powstaje — z danymi i nagłówkami newsów.\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction naLiscieCert(domena) {\n  const czesci = domena.toLowerCase().split('.');\n  return czesci.slice(0, -1).some((_, i) => cert.has(czesci.slice(i).join('.')));\n}\n\n// Jedna odpowiedź Gemini z komentarzami do wszystkich tematów: { \"zloto\": \"...\", \"gpw\": \"...\", ... }\n// Przy błędzie (np. limit) odpowiedzi nie ma — raporty powstają bez komentarza AI.\nlet komentarze = {};\ntry {\n  const tekst = ($input.first()?.json.mergedResponse ?? '')\n    .trim()\n    .replace(/^```(?:json)?\\s*|\\s*```$/g, '');\n  if (tekst) komentarze = JSON.parse(tekst);\n} catch {\n  komentarze = {};\n}\n\nreturn $('Dane i tematy').all().map((item, i) => {\n  const temat = item.json;\n  const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));\n  const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];\n\n  const surowy = komentarze[temat.category];\n  const komentarz = (typeof surowy === 'string' ? surowy : '').trim() || null;\n  const numery = new Set([...(komentarz ?? '').matchAll(/\\[(\\d+)\\]/g)].map((m) => Number(m[1])));\n  const zNumerami = newsy.map((n) => ({\n    nr: n.nr,\n    tytul: n.tytul,\n    opis: n.opis,\n    link: n.link,\n    domena: n.domena,\n    data: n.data,\n    cytowany: numery.has(n.nr),\n  }));\n\n  // Tekst — dla archiwum i starszych widoków\n  const cytowane = zNumerami.filter((n) => n.cytowany);\n  const doListy = cytowane.length ? cytowane : zNumerami.slice(0, 8);\n  const sekcje = [\n    komentarz ??\n      '⚠️ Komentarz AI niedostępny (limit Gemini). Najważniejsze nagłówki:\\n' +\n        zNumerami.slice(0, 8).map((n) => `- [${n.nr}] ${n.tytul} (${n.domena})`).join('\\n'),\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n  ];\n  const zrodlaDanych = temat.instrumenty.filter((x) => x.zrodlo);\n  if (zrodlaDanych.length) {\n    sekcje.push('Źródła danych:\\n' + zrodlaDanych.map((x) => `- 📊 ${x.nazwa} ${x.zrodlo}`).join('\\n'));\n  }\n  if (doListy.length) {\n    sekcje.push('Źródła newsów:\\n' + doListy.map((n) => `- [${n.nr}] ${n.domena} — ${n.tytul} ${n.link}`).join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone (lista ostrzeżeń CERT Polska): ' + odrzucone.join(', '));\n  }\n\n  return {\n    json: {\n      category: temat.category,\n      title: temat.title,\n      content: sekcje.join('\\n\\n'),\n      data: {\n        wersja: 2,\n        komentarz,\n        instrumenty: temat.instrumenty,\n        newsy: zNumerami,\n        odrzucone,\n        ...(temat.cert ? { cert: temat.cert } : {}),\n      },\n    },\n    pairedItem: { item: i },\n  };\n});\n"
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000005",
       "name": "Weryfikacja źródeł",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        680,
+        880,
         0
       ]
     },
@@ -136,7 +120,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        900,
+        1100,
         0
       ],
       "credentials": {
@@ -158,7 +142,7 @@
         ]
       ]
     },
-    "Harmonogram 8/13/18": {
+    "Harmonogram 9/14/20": {
       "main": [
         [
           {
@@ -173,22 +157,15 @@
       "main": [
         [
           {
-            "node": "Po kolei",
+            "node": "Jeden prompt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Po kolei": {
+    "Jeden prompt": {
       "main": [
-        [
-          {
-            "node": "Weryfikacja źródeł",
-            "type": "main",
-            "index": 0
-          }
-        ],
         [
           {
             "node": "Gemini",
@@ -202,18 +179,7 @@
       "main": [
         [
           {
-            "node": "Pauza 10 s",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pauza 10 s": {
-      "main": [
-        [
-          {
-            "node": "Po kolei",
+            "node": "Weryfikacja źródeł",
             "type": "main",
             "index": 0
           }

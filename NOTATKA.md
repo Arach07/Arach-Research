@@ -13,7 +13,7 @@ Prywatna aplikacja (tylko dla mnie), która **3 razy dziennie** zbiera informacj
 złoto, GPW, rynek USA, krypto, ostrzeżenia przed scamami oraz podsumowanie dnia.
 
 ```
-[n8n: harmonogram 8:00 / 13:00 / 18:00]
+[n8n: harmonogram 9:00 / 14:00 / 20:00]
    → pobiera twarde dane z API (NBP, Yahoo Finance, CoinGecko, lista CERT Polska)
    → pobiera newsy z RSS 13 zaufanych portali
    → Gemini pisze komentarz TYLKO na podstawie tych danych, z numerami źródeł [1] [2]
@@ -76,15 +76,17 @@ Dlaczego tak:
 ## 4. Workflow n8n „Raport dzienny”
 
 ```
-[Start (ręcznie)] ─┐
-                   ├→ [Dane i tematy] → [Po kolei] ──done──→ [Weryfikacja źródeł] → [Zapis do apki]
-[Harmonogram     ] ─┘                       ↓ loop     ↑
-[8:00/13:00/18:00]                      [Gemini] → [Pauza 10 s]
+[Start (ręcznie)]           ─┐
+                             ├→ [Dane i tematy] → [Jeden prompt] → [Gemini] → [Weryfikacja źródeł] → [Zapis do apki]
+[Harmonogram 9:00/14:00/20:00]─┘
 ```
 
 - **Model Gemini:** `models/gemini-3.5-flash-lite`. Modele `gemini-2.5-*` zwracają 404 dla nowych użytkowników, a `3-flash-preview` i `3.5-flash` były przeciążone (503).
-- **Pętla „Po kolei” z pauzą 10 s:** tematy idą do Gemini pojedynczo, bo darmowy limit zapytań na minutę jest mały.
-- **Gemini ma „continue on error”:** przy limicie raport i tak się zapisuje.
+- **Jedno zapytanie do Gemini na cały raport** (klocek „Jeden prompt”, kod w `n8n/src/jeden-prompt.js`). Gemini odsyła JSON `{ "zloto": "...", "gpw": "...", ... }`.
+  - **Dlaczego:** błędy „too many requests” to był **DZIENNY** limit darmowego Gemini, a nie minutowy, więc pauzy nie pomagały. 6 zapytań × 3 razy dziennie = 18 to za dużo. Teraz są **3 zapytania dziennie**.
+  - Wcześniejsza wersja z pętlą „Po kolei” i pauzą 10 s jest zastąpiona.
+- **Limit Gemini odnawia się ok. 9:00** czasu polskiego (północ w Kalifornii), dlatego pierwszy raport jest o 9:00. Każde ręczne „Execute workflow” też zużywa 1 zapytanie.
+- **Gemini ma „continue on error”:** przy limicie raport i tak się zapisuje (dane, wykresy i newsy, bez komentarza AI).
 - **Strefa czasowa workflowu:** Europe/Warsaw.
 - **Zapis do apki:** klocek Supabase w trybie **Auto-Map Input Data**, więc sam wysyła `category`, `title`, `content`, `data`.
 - **Tematy** (dodanie nowego = nowa pozycja w tablicy `tematy` w `n8n/src/dane-i-tematy.js`, potem `node n8n/build-workflow.mjs` i ponowne wklejenie):
@@ -126,7 +128,7 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 ### A. Teraz, na komputerze w pracy (chodzi 24 h)
 1. [ ] Napisać Claude'owi **„przełącz”**. Wyłączy n8n uruchomione z rozmowy, które zgaśnie po zamknięciu sesji.
 2. [ ] Dwuklik na `Desktop\ResearchApp\n8n\start-n8n.cmd` i poczekać na „Editor is now accessible”. **Okna nie zamykać.**
-3. [ ] W n8n: Ctrl+A, potem Delete, potem wkleić zawartość `n8n/raport-dzienny.json` (z harmonogramem 8/13/18).
+3. [ ] W n8n: Ctrl+A, potem Delete, potem wkleić zawartość `n8n/raport-dzienny.json` (z harmonogramem 9/14/20 i jednym zapytaniem do Gemini).
 4. [ ] Sprawdzić credentiale w klockach **Gemini** i **Zapis do apki**, potem Ctrl+S.
 5. [ ] Kliknąć **Publish** (prawy górny róg). **Bez tego harmonogram nie ruszy.**
 6. [ ] Raz odpalić ręcznie (**Execute workflow**) i sprawdzić apkę: czy są wykresy, podsumowanie dnia i przypisy.
@@ -176,3 +178,19 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 - „Pokaż starsze” w Archiwum.
 - Twarde dane dla większej liczby instrumentów (srebro, ropa, EUR/PLN, pojedyncze spółki z GPW).
 - Nauka n8n w praktyce: plan z pierwszej rozmowy (n8n → RSS/API → AI → wysyłka) jest zrealizowany i rozbudowany.
+
+Jak to działa: schemat od n8n do apki i dlaczego wybraliśmy takie rozwiązania.
+Konta i usługi: GitHub, Vercel, Supabase, Gemini i n8n, gdzie który klucz ma trafić i czego nie mylić z Home-Budget. Samych kluczy w notatce nie ma.
+Pliki w projekcie: co jest gdzie.
+Workflow n8n: klocki, model Gemini, źródła danych, znane ograniczenia.
+Apka: 4 zakładki, archiwum, ile miejsca zostało w bazie.
+Na czym skończyliśmy: lista z kratkami do odhaczenia:
+A. teraz w pracy: przełączenie n8n, Publish, autostart,
+B. w domu: VPN, zaczynając od sprawdzenia, czy masz publiczne IP czy CGNAT, plus plan nauki,
+C. w domu: Oracle krok po kroku.
+Pomysły na później.
+Zapisałem też w pamięci, żeby przy następnej rozmowie najpierw czytać tę notatkę. Wystarczy, że napiszesz „jestem w domu, robimy VPN” albo „na czym skończyliśmy?”. Po każdym zrobionym zadaniu będę ją aktualizował.
+
+Nie zapisałem natomiast całej naszej rozmowy słowo w słowo. W notatce jest wszystko, co z niej ważne, tylko uporządkowane.
+
+Zostało jeszcze zadanie A.1 na dziś: napisz „przełącz”, gdy będziesz gotowy odpalić start-n8n.cmd
