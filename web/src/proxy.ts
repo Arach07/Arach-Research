@@ -1,10 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseKey, supabaseUrl } from "@/lib/supabase/env";
 
 // Odświeża sesję Supabase i wpuszcza tylko zalogowanego użytkownika.
 export async function proxy(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const url = supabaseUrl;
+  const key = supabaseKey;
 
   const missing = [
     !url && "NEXT_PUBLIC_SUPABASE_URL",
@@ -17,9 +18,10 @@ export async function proxy(request: NextRequest) {
       { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
     );
   }
-  if (!/^https:\/\/[^/]+\.supabase\.co\/?$/.test(url!)) {
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url!)) {
     return new NextResponse(
-      "NEXT_PUBLIC_SUPABASE_URL ma zły format — powinien wyglądać jak https://xxxx.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_URL ma zły format — powinien wyglądać jak https://xxxx.supabase.co\n" +
+        `Apka dostała: ${JSON.stringify(url)}`,
       { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
     );
   }
