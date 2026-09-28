@@ -52,8 +52,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        440,
-        0
+        680,
+        220
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -66,7 +66,37 @@
     },
     {
       "parameters": {
-        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza źródła Gemini na liście CERT Polska\n// i składa gotową treść raportu (tekst + twarde dane + źródła).\n\nconst ZAUFANE = [\n  'bankier.pl', 'money.pl', 'pb.pl', 'parkiet.com', 'rp.pl', 'businessinsider.com.pl', 'forsal.pl',\n  'wnp.pl', 'isbnews.pl', 'pap.pl', 'tvn24.pl', 'strefainwestorow.pl', 'comparic.pl', 'obserwatorfinansowy.pl',\n  'gpw.pl', 'knf.gov.pl', 'nbp.pl', 'gov.pl', 'cert.pl', 'policja.pl', 'niebezpiecznik.pl', 'sekurak.pl',\n  'zaufanatrzeciastrona.pl', 'cyberdefence24.pl', 'xtb.com', 'bossa.pl', 'mbank.pl', 'stooq.pl',\n  'reuters.com', 'bloomberg.com', 'cnbc.com', 'ft.com', 'wsj.com', 'marketwatch.com', 'investing.com',\n  'yahoo.com', 'apnews.com', 'bbc.com', 'economist.com', 'barrons.com', 'fool.com', 'morningstar.com',\n  'federalreserve.gov', 'ecb.europa.eu', 'sec.gov', 'gold.org', 'kitco.com',\n  'coindesk.com', 'cointelegraph.com', 'theblock.co', 'decrypt.co', 'coingecko.com', 'coinmarketcap.com',\n];\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction domenaIRodzice(domena) {\n  const czesci = domena.split('.');\n  return czesci.slice(0, -1).map((_, i) => czesci.slice(i).join('.'));\n}\nconst naLiscie = (domena, zbior) => domenaIRodzice(domena).some((d) => zbior.has(d));\nconst zaufane = new Set(ZAUFANE);\n\nreturn $input.all().map((item, i) => {\n  const temat = $('Dane i tematy').itemMatching(i).json;\n  const chunks = item.json.groundingMetadata?.groundingChunks ?? [];\n\n  const zrodla = [];\n  const odrzucone = [];\n  const widziane = new Set();\n  for (const c of chunks) {\n    const url = c.web?.uri;\n    const domena = (c.web?.title ?? '').toLowerCase().replace(/^www\\./, '').trim();\n    if (!url || widziane.has(url)) continue;\n    widziane.add(url);\n\n    if (/^[a-z0-9.-]+\\.[a-z]{2,}$/.test(domena) && naLiscie(domena, cert)) {\n      odrzucone.push(domena);\n    } else if (naLiscie(domena, zaufane)) {\n      zrodla.push(`- ✅ ${domena} ${url}`);\n    } else {\n      zrodla.push(`- ⚠️ ${domena || 'nieznane źródło'} ${url}`);\n    }\n  }\n\n  const sekcje = [\n    (item.json.mergedResponse ?? '').trim() || 'Brak odpowiedzi modelu.',\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n    'Źródła danych:\\n' + temat.zrodla.map((z) => `- 📊 ${z.nazwa} ${z.url}`).join('\\n'),\n  ];\n  if (zrodla.length) {\n    sekcje.push('Źródła newsów (✅ zaufane, ⚠️ nieweryfikowane):\\n' + zrodla.join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone źródła (lista ostrzeżeń CERT Polska): ' + [...new Set(odrzucone)].join(', '));\n  }\n\n  return {\n    json: { category: temat.category, title: temat.title, content: sekcje.join('\\n\\n') },\n    pairedItem: { item: i },\n  };\n});\n"
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000006",
+      "name": "Po kolei",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000007",
+      "name": "Pauza 20 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        220
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000008"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza źródła Gemini na liście CERT Polska\n// i składa gotową treść raportu (tekst + twarde dane + źródła).\n\nconst ZAUFANE = [\n  'bankier.pl', 'money.pl', 'pb.pl', 'parkiet.com', 'rp.pl', 'businessinsider.com.pl', 'forsal.pl',\n  'wnp.pl', 'isbnews.pl', 'pap.pl', 'tvn24.pl', 'strefainwestorow.pl', 'comparic.pl', 'obserwatorfinansowy.pl',\n  'gpw.pl', 'knf.gov.pl', 'nbp.pl', 'gov.pl', 'cert.pl', 'policja.pl', 'niebezpiecznik.pl', 'sekurak.pl',\n  'zaufanatrzeciastrona.pl', 'cyberdefence24.pl', 'xtb.com', 'bossa.pl', 'mbank.pl', 'stooq.pl',\n  'reuters.com', 'bloomberg.com', 'cnbc.com', 'ft.com', 'wsj.com', 'marketwatch.com', 'investing.com',\n  'yahoo.com', 'apnews.com', 'bbc.com', 'economist.com', 'barrons.com', 'fool.com', 'morningstar.com',\n  'federalreserve.gov', 'ecb.europa.eu', 'sec.gov', 'gold.org', 'kitco.com',\n  'coindesk.com', 'cointelegraph.com', 'theblock.co', 'decrypt.co', 'coingecko.com', 'coinmarketcap.com',\n];\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction domenaIRodzice(domena) {\n  const czesci = domena.split('.');\n  return czesci.slice(0, -1).map((_, i) => czesci.slice(i).join('.'));\n}\nconst naLiscie = (domena, zbior) => domenaIRodzice(domena).some((d) => zbior.has(d));\nconst zaufane = new Set(ZAUFANE);\n\n// Pętla zachowuje kolejność, więc i-ta odpowiedź Gemini = i-ty temat\nconst tematy = $('Dane i tematy').all();\n\nreturn $input.all().map((item, i) => {\n  const temat = tematy[i].json;\n  const chunks = item.json.groundingMetadata?.groundingChunks ?? [];\n\n  const zrodla = [];\n  const odrzucone = [];\n  const widziane = new Set();\n  for (const c of chunks) {\n    const url = c.web?.uri;\n    const domena = (c.web?.title ?? '').toLowerCase().replace(/^www\\./, '').trim();\n    if (!url || widziane.has(url)) continue;\n    widziane.add(url);\n\n    if (/^[a-z0-9.-]+\\.[a-z]{2,}$/.test(domena) && naLiscie(domena, cert)) {\n      odrzucone.push(domena);\n    } else if (naLiscie(domena, zaufane)) {\n      zrodla.push(`- ✅ ${domena} ${url}`);\n    } else {\n      zrodla.push(`- ⚠️ ${domena || 'nieznane źródło'} ${url}`);\n    }\n  }\n\n  const sekcje = [\n    (item.json.mergedResponse ?? '').trim() || 'Brak odpowiedzi modelu.',\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n    'Źródła danych:\\n' + temat.zrodla.map((z) => `- 📊 ${z.nazwa} ${z.url}`).join('\\n'),\n  ];\n  if (zrodla.length) {\n    sekcje.push('Źródła newsów (✅ zaufane, ⚠️ nieweryfikowane):\\n' + zrodla.join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone źródła (lista ostrzeżeń CERT Polska): ' + [...new Set(odrzucone)].join(', '));\n  }\n\n  return {\n    json: { category: temat.category, title: temat.title, content: sekcje.join('\\n\\n') },\n    pairedItem: { item: i },\n  };\n});\n"
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000005",
       "name": "Weryfikacja źródeł",
@@ -128,6 +158,24 @@
       "main": [
         [
           {
+            "node": "Po kolei",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Po kolei": {
+      "main": [
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Gemini + Google Search",
             "type": "main",
             "index": 0
@@ -139,7 +187,18 @@
       "main": [
         [
           {
-            "node": "Weryfikacja źródeł",
+            "node": "Pauza 20 s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 20 s": {
+      "main": [
+        [
+          {
+            "node": "Po kolei",
             "type": "main",
             "index": 0
           }

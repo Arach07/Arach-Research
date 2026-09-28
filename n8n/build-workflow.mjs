@@ -54,11 +54,29 @@ const workflow = {
       name: 'Gemini + Google Search',
       type: '@n8n/n8n-nodes-langchain.googleGemini',
       typeVersion: 1.2,
-      position: [440, 0],
+      position: [680, 220],
       retryOnFail: true,
       maxTries: 3,
       waitBetweenTries: 5000,
       credentials: { googlePalmApi: { name: 'Google Gemini(PaLM) Api account' } },
+    },
+    {
+      // Darmowy Gemini pozwala na kilka zapytań z wyszukiwaniem na minutę — tematy idą po kolei
+      parameters: { batchSize: 1, options: {} },
+      id: '7b0f7a1e-1111-4a6b-9c01-000000000006',
+      name: 'Po kolei',
+      type: 'n8n-nodes-base.splitInBatches',
+      typeVersion: 3,
+      position: [440, 0],
+    },
+    {
+      parameters: { resume: 'timeInterval', amount: 20, unit: 'seconds' },
+      id: '7b0f7a1e-1111-4a6b-9c01-000000000007',
+      name: 'Pauza 20 s',
+      type: 'n8n-nodes-base.wait',
+      typeVersion: 1.1,
+      position: [920, 220],
+      webhookId: '7b0f7a1e-1111-4a6b-9c01-000000000008',
     },
     {
       parameters: { jsCode: src('weryfikacja-zrodel.js') },
@@ -89,8 +107,16 @@ const workflow = {
   ],
   connections: {
     Start: { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
-    'Dane i tematy': { main: [[{ node: 'Gemini + Google Search', type: 'main', index: 0 }]] },
-    'Gemini + Google Search': { main: [[{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }]] },
+    'Dane i tematy': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
+    // wyjście 0 = "done" (wszystkie tematy gotowe), wyjście 1 = "loop" (kolejny temat)
+    'Po kolei': {
+      main: [
+        [{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }],
+        [{ node: 'Gemini + Google Search', type: 'main', index: 0 }],
+      ],
+    },
+    'Gemini + Google Search': { main: [[{ node: 'Pauza 20 s', type: 'main', index: 0 }]] },
+    'Pauza 20 s': { main: [[{ node: 'Po kolei', type: 'main', index: 0 }]] },
     'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
   },
   settings: { executionOrder: 'v1' },

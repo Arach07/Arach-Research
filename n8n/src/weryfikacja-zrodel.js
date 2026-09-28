@@ -26,8 +26,11 @@ function domenaIRodzice(domena) {
 const naLiscie = (domena, zbior) => domenaIRodzice(domena).some((d) => zbior.has(d));
 const zaufane = new Set(ZAUFANE);
 
+// Pętla zachowuje kolejność, więc i-ta odpowiedź Gemini = i-ty temat
+const tematy = $('Dane i tematy').all();
+
 return $input.all().map((item, i) => {
-  const temat = $('Dane i tematy').itemMatching(i).json;
+  const temat = tematy[i].json;
   const chunks = item.json.groundingMetadata?.groundingChunks ?? [];
 
   const zrodla = [];
