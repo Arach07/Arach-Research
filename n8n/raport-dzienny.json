@@ -68,7 +68,7 @@
         "messages": {
           "values": [
             {
-              "content": "={{ $json.prompt }}"
+              "content": "={{ $('Jeden prompt').first().json.prompt }}"
             }
           ]
         },
@@ -87,7 +87,79 @@
         0
       ],
       "retryOnFail": true,
-      "maxTries": 3,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000001",
+              "leftValue": "={{ $json.mergedResponse }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000010",
+      "name": "Jest komentarz?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-3.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $('Jeden prompt').first().json.prompt }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "includeMergedResponse": true,
+          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000011",
+      "name": "Gemini zapasowy",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
       "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
       "credentials": {
@@ -105,7 +177,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
+        1320,
         0
       ]
     },
@@ -120,7 +192,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1100,
+        1540,
         0
       ],
       "credentials": {
@@ -176,6 +248,35 @@
       ]
     },
     "Gemini": {
+      "main": [
+        [
+          {
+            "node": "Jest komentarz?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jest komentarz?": {
+      "main": [
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini zapasowy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini zapasowy": {
       "main": [
         [
           {

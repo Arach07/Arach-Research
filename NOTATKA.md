@@ -76,10 +76,12 @@ Dlaczego tak:
 ## 4. Workflow n8n „Raport dzienny”
 
 ```
-[Start (ręcznie)]           ─┐
-                             ├→ [Dane i tematy] → [Jeden prompt] → [Gemini] → [Weryfikacja źródeł] → [Zapis do apki]
-[Harmonogram 9:00/14:00/20:00]─┘
+[Start (ręcznie)]             ─┐
+                               ├→ [Dane i tematy] → [Jeden prompt] → [Gemini] → [Jest komentarz?] ──tak──→ [Weryfikacja źródeł] → [Zapis do apki]
+[Harmonogram 9:00/14:00/20:00]─┘                                                     └─nie→ [Gemini zapasowy] ─┘
 ```
+
+- **Model zapasowy:** gdy główny model (`gemini-3.5-flash-lite`) nie odpowie, np. przez dzienny limit, workflow próbuje `gemini-3.5-flash`. Limit liczy się **osobno dla każdego modelu**, więc zapasowy ma własną pulę zapytań.
 
 - **Model Gemini:** `models/gemini-3.5-flash-lite`. Modele `gemini-2.5-*` zwracają 404 dla nowych użytkowników, a `3-flash-preview` i `3.5-flash` były przeciążone (503).
 - **Jedno zapytanie do Gemini na cały raport** (klocek „Jeden prompt”, kod w `n8n/src/jeden-prompt.js`). Gemini odsyła JSON `{ "zloto": "...", "gpw": "...", ... }`.

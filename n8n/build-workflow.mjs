@@ -18,6 +18,28 @@ Zasady dla każdego tematu:
 
 Odpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string).`;
 
+function gemini(name, id, model, position) {
+  return {
+    parameters: {
+      modelId: { __rl: true, mode: 'id', value: model },
+      messages: { values: [{ content: "={{ $('Jeden prompt').first().json.prompt }}" }] },
+      jsonOutput: true,
+      options: { includeMergedResponse: true, systemMessage: SYSTEM },
+    },
+    id,
+    name,
+    type: '@n8n/n8n-nodes-langchain.googleGemini',
+    typeVersion: 1.2,
+    position,
+    retryOnFail: true,
+    maxTries: 2,
+    waitBetweenTries: 5000,
+    // Gdy model nie odpowie (np. limit), workflow idzie dalej zamiast się zatrzymać
+    onError: 'continueRegularOutput',
+    credentials: { googlePalmApi: { name: 'Google Gemini(PaLM) Api account' } },
+  };
+}
+
 const workflow = {
   name: 'Raport dzienny',
   nodes: [
@@ -57,32 +79,39 @@ const workflow = {
       typeVersion: 2,
       position: [440, 0],
     },
+    gemini('Gemini', '7b0f7a1e-1111-4a6b-9c01-000000000003', 'models/gemini-3.5-flash-lite', [660, 0]),
     {
+      // Czy Gemini zwrócił komentarz? Jeśli nie (np. dzienny limit) — próbujemy modelu zapasowego
       parameters: {
-        modelId: { __rl: true, mode: 'id', value: 'models/gemini-3.5-flash-lite' },
-        messages: { values: [{ content: '={{ $json.prompt }}' }] },
-        jsonOutput: true,
-        options: { includeMergedResponse: true, systemMessage: SYSTEM },
+        conditions: {
+          options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+          conditions: [
+            {
+              id: '7b0f7a1e-2222-4a6b-9c01-000000000001',
+              leftValue: '={{ $json.mergedResponse }}',
+              rightValue: '',
+              operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+            },
+          ],
+          combinator: 'and',
+        },
+        options: {},
       },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000003',
-      name: 'Gemini',
-      type: '@n8n/n8n-nodes-langchain.googleGemini',
-      typeVersion: 1.2,
-      position: [660, 0],
-      retryOnFail: true,
-      maxTries: 3,
-      waitBetweenTries: 5000,
-      // Gdy Gemini nie odpowie (np. limit), raport powstaje bez komentarza AI
-      onError: 'continueRegularOutput',
-      credentials: { googlePalmApi: { name: 'Google Gemini(PaLM) Api account' } },
+      id: '7b0f7a1e-1111-4a6b-9c01-000000000010',
+      name: 'Jest komentarz?',
+      type: 'n8n-nodes-base.if',
+      typeVersion: 2.2,
+      position: [880, 0],
     },
+    // Limit liczy się osobno dla każdego modelu, więc zapasowy ma własną pulę zapytań
+    gemini('Gemini zapasowy', '7b0f7a1e-1111-4a6b-9c01-000000000011', 'models/gemini-3.5-flash', [1100, 200]),
     {
       parameters: { jsCode: src('weryfikacja-zrodel.js') },
       id: '7b0f7a1e-1111-4a6b-9c01-000000000005',
       name: 'Weryfikacja źródeł',
       type: 'n8n-nodes-base.code',
       typeVersion: 2,
-      position: [880, 0],
+      position: [1320, 0],
     },
     {
       parameters: {
@@ -95,7 +124,7 @@ const workflow = {
       name: 'Zapis do apki',
       type: 'n8n-nodes-base.supabase',
       typeVersion: 1,
-      position: [1100, 0],
+      position: [1540, 0],
       credentials: { supabaseApi: { name: 'Supabase account' } },
     },
   ],
@@ -104,7 +133,15 @@ const workflow = {
     'Harmonogram 9/14/20': { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
     'Dane i tematy': { main: [[{ node: 'Jeden prompt', type: 'main', index: 0 }]] },
     'Jeden prompt': { main: [[{ node: 'Gemini', type: 'main', index: 0 }]] },
-    Gemini: { main: [[{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }]] },
+    Gemini: { main: [[{ node: 'Jest komentarz?', type: 'main', index: 0 }]] },
+    // wyjście 0 = tak (jest komentarz), wyjście 1 = nie (próbujemy zapasowego modelu)
+    'Jest komentarz?': {
+      main: [
+        [{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }],
+        [{ node: 'Gemini zapasowy', type: 'main', index: 0 }],
+      ],
+    },
+    'Gemini zapasowy': { main: [[{ node: 'Weryfikacja źródeł', type: 'main', index: 0 }]] },
     'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
   },
   settings: { executionOrder: 'v1', timezone: 'Europe/Warsaw' },
