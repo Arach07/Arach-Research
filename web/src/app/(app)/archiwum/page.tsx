@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { dayKey, formatDay, formatShort } from "@/lib/format";
-import { categoryMeta, searchReports, teaser, type Report } from "@/lib/reports";
+import { categoryMeta, searchReports, teaser, type ReportSummary } from "@/lib/reports";
 
 export default async function ArchivePage({ searchParams }: PageProps<"/archiwum">) {
   const { q } = await searchParams;
@@ -9,7 +9,7 @@ export default async function ArchivePage({ searchParams }: PageProps<"/archiwum
   const { reports, error } = await searchReports(query);
 
   // Grupowanie po dniu (strefa warszawska)
-  const days = new Map<string, Report[]>();
+  const days = new Map<string, ReportSummary[]>();
   for (const r of reports) {
     const key = dayKey(r.created_at);
     days.set(key, [...(days.get(key) ?? []), r]);

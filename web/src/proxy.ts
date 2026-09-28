@@ -49,9 +49,10 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims weryfikuje podpis tokenu lokalnie (klucze asymetryczne) — bez zapytania do serwera
+  // Supabase przy każdym kliknięciu; przy starszym typie kluczy sam odpyta serwer jak getUser()
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
 

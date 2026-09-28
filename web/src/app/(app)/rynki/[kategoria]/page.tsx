@@ -5,13 +5,17 @@ import { PageHeader } from "@/components/page-header";
 import { ReportView } from "@/components/report-view";
 import { formatShort } from "@/lib/format";
 import { liveQuotes, withLive } from "@/lib/quotes";
-import { CATEGORIES, reportsForCategory } from "@/lib/reports";
+import { CATEGORIES, latestForCategory, olderForCategory } from "@/lib/reports";
 
 export default async function CategoryPage({ params }: PageProps<"/rynki/[kategoria]">) {
   const { kategoria } = await params;
   if (!CATEGORIES[kategoria]) notFound();
 
-  const [[latest, ...older], live] = await Promise.all([reportsForCategory(kategoria), liveQuotes()]);
+  const [latest, older, live] = await Promise.all([
+    latestForCategory(kategoria),
+    olderForCategory(kategoria),
+    liveQuotes(),
+  ]);
   if (!latest) {
     return <PageHeader title={CATEGORIES[kategoria].label} subtitle="Brak raportów" back="/rynki" />;
   }

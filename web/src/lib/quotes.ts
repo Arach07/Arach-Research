@@ -31,6 +31,8 @@ async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (research-app)" },
     next: { revalidate: REVALIDATE_SECONDS },
+    // Wolne źródło nie może blokować całej strony — po 4 s bierzemy dane z raportu
+    signal: AbortSignal.timeout(4000),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json() as Promise<T>;

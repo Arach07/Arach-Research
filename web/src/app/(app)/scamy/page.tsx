@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { ReportView } from "@/components/report-view";
-import { reportsForCategory } from "@/lib/reports";
+import { latestForCategory } from "@/lib/reports";
 import { LinkChecker } from "./link-checker";
 
 const TIPS = [
@@ -12,7 +12,7 @@ const TIPS = [
 ];
 
 export default async function ScamsPage() {
-  const [latest] = await reportsForCategory("scamy", 1);
+  const latest = await latestForCategory("scamy");
 
   return (
     <>
