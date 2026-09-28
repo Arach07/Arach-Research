@@ -1,4 +1,5 @@
 const URL_RE = /(https?:\/\/[^\s]+)/g;
+const IS_URL = /^https?:\/\//;
 // Linia źródła z n8n: "- bankier.pl https://..."
 const SOURCE_LINE_RE = /^- (.+?) (https?:\/\/\S+)$/;
 
@@ -42,7 +43,7 @@ export function ReportContent({ text }: { text: string }) {
         return (
           <p key={i}>
             {line.split(URL_RE).map((part, j) =>
-              /^https?:///.test(part) ? (
+              IS_URL.test(part) ? (
                 <Link key={j} href={part}>
                   {hostname(part)}
                 </Link>
