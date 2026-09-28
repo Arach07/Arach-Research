@@ -3,11 +3,32 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Odświeża sesję Supabase i wpuszcza tylko zalogowanego użytkownika.
 export async function proxy(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  const missing = [
+    !url && "NEXT_PUBLIC_SUPABASE_URL",
+    !key && "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  ].filter(Boolean);
+  if (missing.length > 0) {
+    return new NextResponse(
+      `Brak zmiennych środowiskowych: ${missing.join(", ")}. ` +
+        "Dodaj je w Vercel (Settings → Environments) i zrób Redeploy.",
+      { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
+    );
+  }
+  if (!/^https:\/\/[^/]+\.supabase\.co\/?$/.test(url!)) {
+    return new NextResponse(
+      "NEXT_PUBLIC_SUPABASE_URL ma zły format — powinien wyglądać jak https://xxxx.supabase.co",
+      { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
+    );
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    url!,
+    key!,
     {
       cookies: {
         getAll() {
