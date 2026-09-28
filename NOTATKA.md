@@ -76,16 +76,19 @@ Dlaczego tak:
 ## 4. Workflow n8n „Raport dzienny”
 
 ```
-[Start (ręcznie)] / [Harmonogram 9:00/14:00/20:00]
-   → [Dane i tematy] → [Jeden prompt]
-   → [Gemini 1 (flash-lite)] → [Jest komentarz? (1)] ──tak──→ [Weryfikacja źródeł] → [Zapis do apki]
-                                     └─nie→ [Gemini 2 (flash)] → [Jest komentarz? (2)] ──tak──↗
-                                                                      └─nie→ [Gemini 3 (3-flash)] ──↗
+[Start] / [Harmonogram 9:00/14:00/20:00] → [Dane i tematy] → [Jeden prompt] → [Runda]
+  → [Gemini 1] → nie? → [Gemini 2] → nie? → [Gemini 3] → nie? → [Gemini 4] → nie? → [Gemma 5]
+       └tak──────────────┴──────────────┴──────────────┴──────────────┴──→ [Weryfikacja źródeł] → [Zapis do apki]
+  wszystkie 5 odmówiły → [Kolejna runda?] → tak (runda < 3) → [Pauza 60 s] → [Runda] (od nowa)
+                                          → nie → [Weryfikacja źródeł] (raport bez komentarza AI)
 ```
 
-- **Łańcuch 3 modeli:** gdy model nie odpowie (dzienny limit albo przeciążenie), workflow sam próbuje następnego:
-  `gemini-3.5-flash-lite`, potem `gemini-3.5-flash`, potem `gemini-3-flash-preview`. Limit liczy się **osobno dla każdego modelu**, więc każdy ma własną pulę. Gdy wszystkie trzy odmówią, raport i tak się zapisuje, bez komentarza AI.
-- Modele zmienia się w `n8n/build-workflow.mjs` w tablicy `MODELE`, a potem trzeba uruchomić `node n8n/build-workflow.mjs`.
+- **Łańcuch 5 modeli** (każdy ma **osobny** dzienny limit):
+  1. `gemini-3.5-flash-lite`, 2. `gemini-3.5-flash`, 3. `gemini-3-flash-preview`, 4. `gemini-3.1-flash-lite`, 5. `gemma-4-31b-it`.
+  - **Gemma** to tekstowy model Google (nie do grafik), zwykle z większym darmowym limitem. Nie przyjmuje instrukcji systemowej ani trybu JSON, więc zasady dostaje na początku wiadomości, a odpowiedź „naprawia” klocek Weryfikacja (wycina JSON, poprawia znaki nowej linii).
+- **Rundy:** gdy wszystkie 5 modeli odmówi, następuje pauza 60 s i cały łańcuch od nowa, **maksymalnie 3 rundy** (pomaga na przeciążenia 503; na wyczerpany dzienny limit 429 pomagają inne modele).
+- Modele, liczbę rund i pauzę zmienia się w `n8n/build-workflow.mjs` (`MODELE`, `RUNDY`, `PAUZA_MIEDZY_RUNDAMI_S`), a potem trzeba uruchomić `node n8n/build-workflow.mjs`.
+- Pomijamy modele 2.5 (niedostępne dla nowych kont), „live”, „transcribe”, „lyria” (muzyka), „nano-banana” (grafika), „robotics”.
 
 - **Model Gemini:** `models/gemini-3.5-flash-lite`. Modele `gemini-2.5-*` zwracają 404 dla nowych użytkowników, a `3-flash-preview` i `3.5-flash` były przeciążone (503).
 - **Jedno zapytanie do Gemini na cały raport** (klocek „Jeden prompt”, kod w `n8n/src/jeden-prompt.js`). Gemini odsyła JSON `{ "zloto": "...", "gpw": "...", ... }`.

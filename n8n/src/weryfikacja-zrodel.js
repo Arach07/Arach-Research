@@ -17,14 +17,39 @@ function naLiscieCert(domena) {
 
 // Jedna odpowiedź Gemini z komentarzami do wszystkich tematów: { "zloto": "...", "gpw": "...", ... }
 // Przy błędzie (np. limit) odpowiedzi nie ma — raporty powstają bez komentarza AI.
+// Gemma nie ma trybu JSON: bywa, że dopisze coś przed/po albo wstawi zwykłe znaki nowej linii
+// w środek tekstu (to formalnie błędny JSON). Bierzemy tekst od pierwszej { do ostatniej }
+// i zamieniamy znaki nowej linii WEWNĄTRZ napisów na \n.
+function naprawJson(tekst) {
+  let wynik = '';
+  let wNapisie = false;
+  let poBackslashu = false;
+  for (const znak of tekst) {
+    if (wNapisie && !poBackslashu && znak === '\n') wynik += '\\n';
+    else if (wNapisie && !poBackslashu && znak === '\r') continue;
+    else if (wNapisie && !poBackslashu && znak === '\t') wynik += '\\t';
+    else wynik += znak;
+    if (znak === '"' && !poBackslashu) wNapisie = !wNapisie;
+    poBackslashu = znak === '\\' && !poBackslashu;
+  }
+  return wynik;
+}
+
 let komentarze = {};
-try {
-  const tekst = ($input.first()?.json.mergedResponse ?? '')
-    .trim()
-    .replace(/^```(?:json)?\s*|\s*```$/g, '');
-  if (tekst) komentarze = JSON.parse(tekst);
-} catch {
-  komentarze = {};
+const odpowiedz = ($input.first()?.json.mergedResponse ?? '').trim();
+const start = odpowiedz.indexOf('{');
+const koniec = odpowiedz.lastIndexOf('}');
+if (start >= 0 && koniec > start) {
+  const kandydat = odpowiedz.slice(start, koniec + 1);
+  try {
+    komentarze = JSON.parse(kandydat);
+  } catch {
+    try {
+      komentarze = JSON.parse(naprawJson(kandydat));
+    } catch {
+      komentarze = {};
+    }
+  }
 }
 
 return $('Dane i tematy').all().map((item, i) => {

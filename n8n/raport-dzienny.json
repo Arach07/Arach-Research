@@ -60,6 +60,19 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{ json: { runda: $runIndex + 1 } }];"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000007",
+      "name": "Runda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "id",
@@ -78,12 +91,12 @@
           "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
         }
       },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000003",
-      "name": "Gemini 1 (flash-lite)",
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000100",
+      "name": "Gemini 1 (3.5-flash-lite)",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        660,
+        880,
         0
       ],
       "retryOnFail": true,
@@ -107,7 +120,7 @@
           },
           "conditions": [
             {
-              "id": "7b0f7a1e-2222-4a6b-9c01-000000000010",
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000200",
               "leftValue": "={{ $json.mergedResponse }}",
               "rightValue": "",
               "operator": {
@@ -121,12 +134,12 @@
         },
         "options": {}
       },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000010",
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000200",
       "name": "Jest komentarz? (1)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        880,
+        1100,
         0
       ]
     },
@@ -150,13 +163,13 @@
           "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
         }
       },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000011",
-      "name": "Gemini 2 (flash)",
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000101",
+      "name": "Gemini 2 (3.5-flash)",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        1100,
-        200
+        1320,
+        180
       ],
       "retryOnFail": true,
       "maxTries": 2,
@@ -179,7 +192,7 @@
           },
           "conditions": [
             {
-              "id": "7b0f7a1e-2222-4a6b-9c01-000000000012",
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000201",
               "leftValue": "={{ $json.mergedResponse }}",
               "rightValue": "",
               "operator": {
@@ -193,13 +206,13 @@
         },
         "options": {}
       },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000012",
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000201",
       "name": "Jest komentarz? (2)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1320,
-        200
+        1540,
+        180
       ]
     },
     {
@@ -222,13 +235,13 @@
           "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
         }
       },
-      "id": "7b0f7a1e-1111-4a6b-9c01-000000000013",
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000102",
       "name": "Gemini 3 (3-flash)",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        1540,
-        400
+        1760,
+        360
       ],
       "retryOnFail": true,
       "maxTries": 2,
@@ -242,14 +255,240 @@
     },
     {
       "parameters": {
-        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza linki na liście CERT Polska i składa raport dla apki:\n// - content: pełny tekst (komentarz AI + twarde dane + źródła) — zapasowo i do archiwum,\n// - data: uporządkowane dane (instrumenty z wykresami, newsy, komentarz) — z tego rysuje apka.\n// Gdy Gemini nie odpowie (np. limit), raport i tak powstaje — z danymi i nagłówkami newsów.\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction naLiscieCert(domena) {\n  const czesci = domena.toLowerCase().split('.');\n  return czesci.slice(0, -1).some((_, i) => cert.has(czesci.slice(i).join('.')));\n}\n\n// Jedna odpowiedź Gemini z komentarzami do wszystkich tematów: { \"zloto\": \"...\", \"gpw\": \"...\", ... }\n// Przy błędzie (np. limit) odpowiedzi nie ma — raporty powstają bez komentarza AI.\nlet komentarze = {};\ntry {\n  const tekst = ($input.first()?.json.mergedResponse ?? '')\n    .trim()\n    .replace(/^```(?:json)?\\s*|\\s*```$/g, '');\n  if (tekst) komentarze = JSON.parse(tekst);\n} catch {\n  komentarze = {};\n}\n\nreturn $('Dane i tematy').all().map((item, i) => {\n  const temat = item.json;\n  const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));\n  const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];\n\n  const surowy = komentarze[temat.category];\n  const komentarz = (typeof surowy === 'string' ? surowy : '').trim() || null;\n  const numery = new Set([...(komentarz ?? '').matchAll(/\\[(\\d+)\\]/g)].map((m) => Number(m[1])));\n  const zNumerami = newsy.map((n) => ({\n    nr: n.nr,\n    tytul: n.tytul,\n    opis: n.opis,\n    link: n.link,\n    domena: n.domena,\n    data: n.data,\n    cytowany: numery.has(n.nr),\n  }));\n\n  // Tekst — dla archiwum i starszych widoków\n  const cytowane = zNumerami.filter((n) => n.cytowany);\n  const doListy = cytowane.length ? cytowane : zNumerami.slice(0, 8);\n  const sekcje = [\n    komentarz ??\n      '⚠️ Komentarz AI niedostępny (limit Gemini). Najważniejsze nagłówki:\\n' +\n        zNumerami.slice(0, 8).map((n) => `- [${n.nr}] ${n.tytul} (${n.domena})`).join('\\n'),\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n  ];\n  const zrodlaDanych = temat.instrumenty.filter((x) => x.zrodlo);\n  if (zrodlaDanych.length) {\n    sekcje.push('Źródła danych:\\n' + zrodlaDanych.map((x) => `- 📊 ${x.nazwa} ${x.zrodlo}`).join('\\n'));\n  }\n  if (doListy.length) {\n    sekcje.push('Źródła newsów:\\n' + doListy.map((n) => `- [${n.nr}] ${n.domena} — ${n.tytul} ${n.link}`).join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone (lista ostrzeżeń CERT Polska): ' + odrzucone.join(', '));\n  }\n\n  return {\n    json: {\n      category: temat.category,\n      title: temat.title,\n      content: sekcje.join('\\n\\n'),\n      data: {\n        wersja: 2,\n        komentarz,\n        instrumenty: temat.instrumenty,\n        newsy: zNumerami,\n        odrzucone,\n        ...(temat.cert ? { cert: temat.cert } : {}),\n      },\n    },\n    pairedItem: { item: i },\n  };\n});\n"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000202",
+              "leftValue": "={{ $json.mergedResponse }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000202",
+      "name": "Jest komentarz? (3)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1980,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $('Jeden prompt').first().json.prompt }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "includeMergedResponse": true,
+          "systemMessage": "Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\n\nZasady dla każdego tematu:\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\n- Domyślnie 5-8 punktów, każdy zaczyna się od \"- \", a na końcu jedno zdanie zaczynające się od \"Podsumowanie:\" (chyba że ZADANIE tematu mówi inaczej).\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\n\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string)."
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000103",
+      "name": "Gemini 4 (3.1-flash-lite)",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2200,
+        540
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000203",
+              "leftValue": "={{ $json.mergedResponse }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000203",
+      "name": "Jest komentarz? (4)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2420,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemma-4-31b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ \"Jesteś analitykiem rynków finansowych. Piszesz krótkie, rzeczowe komentarze po polsku dla inwestora indywidualnego.\\n\\nZasady dla każdego tematu:\\n- Korzystaj WYŁĄCZNIE z TWARDYCH DANYCH i NEWSÓW danego tematu. Nie dopisuj faktów, liczb ani wydarzeń spoza nich.\\n- Liczby z TWARDYCH DANYCH są pewne (z API). Nie podawaj innych wartości dla tych instrumentów.\\n- Po każdej informacji z newsów podaj numer źródła w nawiasie kwadratowym, np. [3]. Możesz łączyć kilka: [1][4].\\n- Prognozy tylko wtedy, gdy są w newsach, z nazwą autora. Nigdy nie wymyślaj własnych prognoz.\\n- Jeśli newsów na dany temat brakuje, napisz to wprost.\\n- Domyślnie 5-8 punktów, każdy zaczyna się od \\\"- \\\", a na końcu jedno zdanie zaczynające się od \\\"Podsumowanie:\\\" (chyba że ZADANIE tematu mówi inaczej).\\n- Zwykły tekst: bez nagłówków, bez pogrubień, bez znaków # i *.\\n\\nOdpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string).\\n\\n---\\n\\n\" + $('Jeden prompt').first().json.prompt }}"
+            }
+          ]
+        },
+        "jsonOutput": false,
+        "options": {
+          "includeMergedResponse": true
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000104",
+      "name": "Gemma 5 (gemma-4-31b)",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        720
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000204",
+              "leftValue": "={{ $json.mergedResponse }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000204",
+      "name": "Jest komentarz? (5)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b0f7a1e-2222-4a6b-9c01-000000000300",
+              "leftValue": "={{ $('Runda').last().json.runda }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000300",
+      "name": "Kolejna runda?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3080,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000301",
+      "name": "Pauza 60 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3300,
+        900
+      ],
+      "webhookId": "7b0f7a1e-1111-4a6b-9c01-000000000302"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Klocek \"Weryfikacja źródeł\": sprawdza linki na liście CERT Polska i składa raport dla apki:\n// - content: pełny tekst (komentarz AI + twarde dane + źródła) — zapasowo i do archiwum,\n// - data: uporządkowane dane (instrumenty z wykresami, newsy, komentarz) — z tego rysuje apka.\n// Gdy Gemini nie odpowie (np. limit), raport i tak powstaje — z danymi i nagłówkami newsów.\n\nconst certTxt = await this.helpers.httpRequest({\n  url: 'https://hole.cert.pl/domains/v2/domains.txt',\n  timeout: 30000,\n});\nconst cert = new Set(certTxt.split('\\n').map((s) => s.trim().toLowerCase()).filter(Boolean));\n\n// \"sub.bankier.pl\" -> sprawdza sub.bankier.pl, bankier.pl\nfunction naLiscieCert(domena) {\n  const czesci = domena.toLowerCase().split('.');\n  return czesci.slice(0, -1).some((_, i) => cert.has(czesci.slice(i).join('.')));\n}\n\n// Jedna odpowiedź Gemini z komentarzami do wszystkich tematów: { \"zloto\": \"...\", \"gpw\": \"...\", ... }\n// Przy błędzie (np. limit) odpowiedzi nie ma — raporty powstają bez komentarza AI.\n// Gemma nie ma trybu JSON: bywa, że dopisze coś przed/po albo wstawi zwykłe znaki nowej linii\n// w środek tekstu (to formalnie błędny JSON). Bierzemy tekst od pierwszej { do ostatniej }\n// i zamieniamy znaki nowej linii WEWNĄTRZ napisów na \\n.\nfunction naprawJson(tekst) {\n  let wynik = '';\n  let wNapisie = false;\n  let poBackslashu = false;\n  for (const znak of tekst) {\n    if (wNapisie && !poBackslashu && znak === '\\n') wynik += '\\\\n';\n    else if (wNapisie && !poBackslashu && znak === '\\r') continue;\n    else if (wNapisie && !poBackslashu && znak === '\\t') wynik += '\\\\t';\n    else wynik += znak;\n    if (znak === '\"' && !poBackslashu) wNapisie = !wNapisie;\n    poBackslashu = znak === '\\\\' && !poBackslashu;\n  }\n  return wynik;\n}\n\nlet komentarze = {};\nconst odpowiedz = ($input.first()?.json.mergedResponse ?? '').trim();\nconst start = odpowiedz.indexOf('{');\nconst koniec = odpowiedz.lastIndexOf('}');\nif (start >= 0 && koniec > start) {\n  const kandydat = odpowiedz.slice(start, koniec + 1);\n  try {\n    komentarze = JSON.parse(kandydat);\n  } catch {\n    try {\n      komentarze = JSON.parse(naprawJson(kandydat));\n    } catch {\n      komentarze = {};\n    }\n  }\n}\n\nreturn $('Dane i tematy').all().map((item, i) => {\n  const temat = item.json;\n  const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));\n  const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];\n\n  const surowy = komentarze[temat.category];\n  const komentarz = (typeof surowy === 'string' ? surowy : '').trim() || null;\n  const numery = new Set([...(komentarz ?? '').matchAll(/\\[(\\d+)\\]/g)].map((m) => Number(m[1])));\n  const zNumerami = newsy.map((n) => ({\n    nr: n.nr,\n    tytul: n.tytul,\n    opis: n.opis,\n    link: n.link,\n    domena: n.domena,\n    data: n.data,\n    cytowany: numery.has(n.nr),\n  }));\n\n  // Tekst — dla archiwum i starszych widoków\n  const cytowane = zNumerami.filter((n) => n.cytowany);\n  const doListy = cytowane.length ? cytowane : zNumerami.slice(0, 8);\n  const sekcje = [\n    komentarz ??\n      '⚠️ Komentarz AI niedostępny (limit Gemini). Najważniejsze nagłówki:\\n' +\n        zNumerami.slice(0, 8).map((n) => `- [${n.nr}] ${n.tytul} (${n.domena})`).join('\\n'),\n    'Twarde dane (API, liczone automatycznie):\\n' + temat.daneTekst,\n  ];\n  const zrodlaDanych = temat.instrumenty.filter((x) => x.zrodlo);\n  if (zrodlaDanych.length) {\n    sekcje.push('Źródła danych:\\n' + zrodlaDanych.map((x) => `- 📊 ${x.nazwa} ${x.zrodlo}`).join('\\n'));\n  }\n  if (doListy.length) {\n    sekcje.push('Źródła newsów:\\n' + doListy.map((n) => `- [${n.nr}] ${n.domena} — ${n.tytul} ${n.link}`).join('\\n'));\n  }\n  if (odrzucone.length) {\n    sekcje.push('🚫 Odrzucone (lista ostrzeżeń CERT Polska): ' + odrzucone.join(', '));\n  }\n\n  return {\n    json: {\n      category: temat.category,\n      title: temat.title,\n      content: sekcje.join('\\n\\n'),\n      data: {\n        wersja: 2,\n        komentarz,\n        instrumenty: temat.instrumenty,\n        newsy: zNumerami,\n        odrzucone,\n        ...(temat.cert ? { cert: temat.cert } : {}),\n      },\n    },\n    pairedItem: { item: i },\n  };\n});\n"
       },
       "id": "7b0f7a1e-1111-4a6b-9c01-000000000005",
       "name": "Weryfikacja źródeł",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
+        3520,
         0
       ]
     },
@@ -264,7 +503,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1980,
+        3740,
         0
       ],
       "credentials": {
@@ -312,14 +551,25 @@
       "main": [
         [
           {
-            "node": "Gemini 1 (flash-lite)",
+            "node": "Runda",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini 1 (flash-lite)": {
+    "Runda": {
+      "main": [
+        [
+          {
+            "node": "Gemini 1 (3.5-flash-lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 1 (3.5-flash-lite)": {
       "main": [
         [
           {
@@ -341,14 +591,14 @@
         ],
         [
           {
-            "node": "Gemini 2 (flash)",
+            "node": "Gemini 2 (3.5-flash)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini 2 (flash)": {
+    "Gemini 2 (3.5-flash)": {
       "main": [
         [
           {
@@ -381,7 +631,112 @@
       "main": [
         [
           {
+            "node": "Jest komentarz? (3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jest komentarz? (3)": {
+      "main": [
+        [
+          {
             "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini 4 (3.1-flash-lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 4 (3.1-flash-lite)": {
+      "main": [
+        [
+          {
+            "node": "Jest komentarz? (4)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jest komentarz? (4)": {
+      "main": [
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemma 5 (gemma-4-31b)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemma 5 (gemma-4-31b)": {
+      "main": [
+        [
+          {
+            "node": "Jest komentarz? (5)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jest komentarz? (5)": {
+      "main": [
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kolejna runda?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kolejna runda?": {
+      "main": [
+        [
+          {
+            "node": "Pauza 60 s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Weryfikacja źródeł",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pauza 60 s": {
+      "main": [
+        [
+          {
+            "node": "Runda",
             "type": "main",
             "index": 0
           }

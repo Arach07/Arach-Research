@@ -18,16 +18,43 @@ Zasady dla każdego tematu:
 
 Odpowiadasz WYŁĄCZNIE poprawnym obiektem JSON: klucz = nazwa tematu, wartość = komentarz (string).`;
 
-function gemini(name, id, model, position) {
+// Łańcuch modeli (kolejność = kolejność prób). Limit darmowego Gemini liczy się osobno
+// dla każdego modelu, więc gdy jeden odmówi (limit/przeciążenie), próbujemy następnego.
+// gemma: modele Gemma nie przyjmują instrukcji systemowej ani trybu JSON —
+// dostają zasady na początku wiadomości, a JSON wyłuskuje klocek "Weryfikacja źródeł".
+const MODELE = [
+  { nazwa: 'Gemini 1 (3.5-flash-lite)', model: 'models/gemini-3.5-flash-lite' },
+  { nazwa: 'Gemini 2 (3.5-flash)', model: 'models/gemini-3.5-flash' },
+  { nazwa: 'Gemini 3 (3-flash)', model: 'models/gemini-3-flash-preview' },
+  { nazwa: 'Gemini 4 (3.1-flash-lite)', model: 'models/gemini-3.1-flash-lite' },
+  { nazwa: 'Gemma 5 (gemma-4-31b)', model: 'models/gemma-4-31b-it', gemma: true },
+];
+
+// Gdy wszystkie modele odmówią: pauza i cały łańcuch od nowa, maksymalnie tyle rund
+const RUNDY = 3;
+const PAUZA_MIEDZY_RUNDAMI_S = 60;
+
+const id = (n) => `7b0f7a1e-1111-4a6b-9c01-${String(n).padStart(12, '0')}`;
+
+function gemini(m, i, position) {
+  const prompt = "$('Jeden prompt').first().json.prompt";
   return {
     parameters: {
-      modelId: { __rl: true, mode: 'id', value: model },
-      messages: { values: [{ content: "={{ $('Jeden prompt').first().json.prompt }}" }] },
-      jsonOutput: true,
-      options: { includeMergedResponse: true, systemMessage: SYSTEM },
+      modelId: { __rl: true, mode: 'id', value: m.model },
+      messages: {
+        values: [
+          {
+            content: m.gemma
+              ? `={{ ${JSON.stringify(SYSTEM + '\n\n---\n\n')} + ${prompt} }}`
+              : `={{ ${prompt} }}`,
+          },
+        ],
+      },
+      jsonOutput: !m.gemma,
+      options: m.gemma ? { includeMergedResponse: true } : { includeMergedResponse: true, systemMessage: SYSTEM },
     },
-    id,
-    name,
+    id: id(100 + i),
+    name: m.nazwa,
     type: '@n8n/n8n-nodes-langchain.googleGemini',
     typeVersion: 1.2,
     position,
@@ -40,31 +67,17 @@ function gemini(name, id, model, position) {
   };
 }
 
-const MODELE = [
-  { nazwa: 'Gemini 1 (flash-lite)', model: 'models/gemini-3.5-flash-lite', id: '7b0f7a1e-1111-4a6b-9c01-000000000003', ifId: '7b0f7a1e-1111-4a6b-9c01-000000000010' },
-  { nazwa: 'Gemini 2 (flash)', model: 'models/gemini-3.5-flash', id: '7b0f7a1e-1111-4a6b-9c01-000000000011', ifId: '7b0f7a1e-1111-4a6b-9c01-000000000012' },
-  { nazwa: 'Gemini 3 (3-flash)', model: 'models/gemini-3-flash-preview', id: '7b0f7a1e-1111-4a6b-9c01-000000000013' },
-];
-
-// Czy model zwrócił komentarz? wyjście 0 = tak, wyjście 1 = nie (następny model)
-function czyJestKomentarz(name, id, position) {
+function warunek(name, nodeId, position, condition) {
   return {
     parameters: {
       conditions: {
         options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
-        conditions: [
-          {
-            id: id.replace('1111', '2222'),
-            leftValue: '={{ $json.mergedResponse }}',
-            rightValue: '',
-            operator: { type: 'string', operation: 'notEmpty', singleValue: true },
-          },
-        ],
+        conditions: [{ id: nodeId.replace('1111', '2222'), ...condition }],
         combinator: 'and',
       },
       options: {},
     },
-    id,
+    id: nodeId,
     name,
     type: 'n8n-nodes-base.if',
     typeVersion: 2.2,
@@ -72,36 +85,50 @@ function czyJestKomentarz(name, id, position) {
   };
 }
 
-// Połączenia łańcucha: model → IF → (tak: Weryfikacja | nie: kolejny model); ostatni model → Weryfikacja
-const WERYFIKACJA = { node: 'Weryfikacja źródeł', type: 'main', index: 0 };
+// Czy model zwrócił komentarz? wyjście 0 = tak, wyjście 1 = nie (następny model)
+const czyJestKomentarz = (i, position) =>
+  warunek(`Jest komentarz? (${i + 1})`, id(200 + i), position, {
+    leftValue: '={{ $json.mergedResponse }}',
+    rightValue: '',
+    operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+  });
+
+const to = (node) => ({ node, type: 'main', index: 0 });
+const WERYFIKACJA = to('Weryfikacja źródeł');
+
+// Model → IF → (tak: Weryfikacja | nie: kolejny model); po ostatnim modelu: kolejna runda albo koniec
 const polaczeniaModeli = Object.fromEntries(
   MODELE.flatMap((m, i) => {
     const ifName = `Jest komentarz? (${i + 1})`;
-    if (i === MODELE.length - 1) return [[m.nazwa, { main: [[WERYFIKACJA]] }]];
+    const dalej = i < MODELE.length - 1 ? to(MODELE[i + 1].nazwa) : to('Kolejna runda?');
     return [
-      [m.nazwa, { main: [[{ node: ifName, type: 'main', index: 0 }]] }],
-      [ifName, { main: [[WERYFIKACJA], [{ node: MODELE[i + 1].nazwa, type: 'main', index: 0 }]] }],
+      [m.nazwa, { main: [[to(ifName)]] }],
+      [ifName, { main: [[WERYFIKACJA], [dalej]] }],
     ];
   }),
 );
+
+const X = (i) => 880 + i * 440;
+const Y = (i) => i * 180;
+const ostatni = MODELE.length - 1;
 
 const workflow = {
   name: 'Raport dzienny',
   nodes: [
     {
       parameters: {},
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000001',
+      id: id(1),
       name: 'Start',
       type: 'n8n-nodes-base.manualTrigger',
       typeVersion: 1,
       position: [0, -120],
     },
     {
-      // Codziennie o 9:00, 14:00 i 20:00 czasu polskiego (9:00 = po odnowieniu dziennego limitu Gemini) (strefa z ustawień workflowu)
+      // Codziennie o 9:00, 14:00 i 20:00 czasu polskiego (9:00 = po odnowieniu dziennego limitu Gemini)
       parameters: {
         rule: { interval: [{ field: 'cronExpression', expression: '0 9,14,20 * * *' }] },
       },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000009',
+      id: id(9),
       name: 'Harmonogram 9/14/20',
       type: 'n8n-nodes-base.scheduleTrigger',
       typeVersion: 1.2,
@@ -109,7 +136,7 @@ const workflow = {
     },
     {
       parameters: { jsCode: src('dane-i-tematy.js') },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000002',
+      id: id(2),
       name: 'Dane i tematy',
       type: 'n8n-nodes-base.code',
       typeVersion: 2,
@@ -118,25 +145,44 @@ const workflow = {
     {
       // Darmowy Gemini ma mały dzienny limit — wszystkie tematy idą w jednym zapytaniu
       parameters: { jsCode: src('jeden-prompt.js') },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000006',
+      id: id(6),
       name: 'Jeden prompt',
       type: 'n8n-nodes-base.code',
       typeVersion: 2,
       position: [440, 0],
     },
-    // Łańcuch modeli: gdy jeden nie odpowie (limit/przeciążenie), próbujemy następnego.
-    // Limit darmowego Gemini liczy się osobno dla każdego modelu.
-    ...MODELE.flatMap((m, i) => [
-      gemini(m.nazwa, m.id, m.model, [660 + i * 440, i * 200]),
-      ...(i < MODELE.length - 1 ? [czyJestKomentarz(`Jest komentarz? (${i + 1})`, m.ifId, [880 + i * 440, i * 200])] : []),
-    ]),
+    {
+      // Licznik rund: 1, 2, 3... (ile razy przeszliśmy przez cały łańcuch modeli)
+      parameters: { jsCode: 'return [{ json: { runda: $runIndex + 1 } }];' },
+      id: id(7),
+      name: 'Runda',
+      type: 'n8n-nodes-base.code',
+      typeVersion: 2,
+      position: [660, 0],
+    },
+    ...MODELE.flatMap((m, i) => [gemini(m, i, [X(i), Y(i)]), czyJestKomentarz(i, [X(i) + 220, Y(i)])]),
+    warunek('Kolejna runda?', id(300), [X(ostatni) + 440, Y(ostatni)], {
+      leftValue: "={{ $('Runda').last().json.runda }}",
+      rightValue: RUNDY,
+      operator: { type: 'number', operation: 'lt' },
+    }),
+    {
+      // Przeciążenie (503) zwykle mija po chwili — czekamy i próbujemy całą rundę od nowa
+      parameters: { resume: 'timeInterval', amount: PAUZA_MIEDZY_RUNDAMI_S, unit: 'seconds' },
+      id: id(301),
+      name: `Pauza ${PAUZA_MIEDZY_RUNDAMI_S} s`,
+      type: 'n8n-nodes-base.wait',
+      typeVersion: 1.1,
+      position: [X(ostatni) + 660, Y(ostatni) + 180],
+      webhookId: id(302),
+    },
     {
       parameters: { jsCode: src('weryfikacja-zrodel.js') },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000005',
+      id: id(5),
       name: 'Weryfikacja źródeł',
       type: 'n8n-nodes-base.code',
       typeVersion: 2,
-      position: [1760, 0],
+      position: [X(ostatni) + 880, 0],
     },
     {
       parameters: {
@@ -145,21 +191,25 @@ const workflow = {
         dataToSend: 'autoMapInputData',
         inputsToIgnore: '',
       },
-      id: '7b0f7a1e-1111-4a6b-9c01-000000000004',
+      id: id(4),
       name: 'Zapis do apki',
       type: 'n8n-nodes-base.supabase',
       typeVersion: 1,
-      position: [1980, 0],
+      position: [X(ostatni) + 1100, 0],
       credentials: { supabaseApi: { name: 'Supabase account' } },
     },
   ],
   connections: {
-    Start: { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
-    'Harmonogram 9/14/20': { main: [[{ node: 'Dane i tematy', type: 'main', index: 0 }]] },
-    'Dane i tematy': { main: [[{ node: 'Jeden prompt', type: 'main', index: 0 }]] },
-    'Jeden prompt': { main: [[{ node: MODELE[0].nazwa, type: 'main', index: 0 }]] },
+    Start: { main: [[to('Dane i tematy')]] },
+    'Harmonogram 9/14/20': { main: [[to('Dane i tematy')]] },
+    'Dane i tematy': { main: [[to('Jeden prompt')]] },
+    'Jeden prompt': { main: [[to('Runda')]] },
+    Runda: { main: [[to(MODELE[0].nazwa)]] },
     ...polaczeniaModeli,
-    'Weryfikacja źródeł': { main: [[{ node: 'Zapis do apki', type: 'main', index: 0 }]] },
+    // tak = zostały rundy → pauza i od nowa; nie = koniec prób → raport bez komentarza AI
+    'Kolejna runda?': { main: [[to(`Pauza ${PAUZA_MIEDZY_RUNDAMI_S} s`)], [WERYFIKACJA]] },
+    [`Pauza ${PAUZA_MIEDZY_RUNDAMI_S} s`]: { main: [[to('Runda')]] },
+    'Weryfikacja źródeł': { main: [[to('Zapis do apki')]] },
   },
   settings: { executionOrder: 'v1', timezone: 'Europe/Warsaw' },
 };
