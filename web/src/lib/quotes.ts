@@ -47,6 +47,26 @@ type YahooChart = {
   };
 };
 
+// Dzienne zamknięcia z danych godzinowych: ostatnia wartość każdego dnia (czas warszawski).
+// Historia zmienia się wolno, więc odświeżamy najwyżej co 10 minut.
+async function dailyFromHourly(symbol: string): Promise<number[]> {
+  try {
+    const data = await getJson<{
+      chart: { result: { timestamp?: number[]; indicators: { quote: { close: (number | null)[] }[] } }[] };
+    }>(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=3mo&interval=1h`, 600);
+    const r = data.chart.result[0];
+    const closes = r.indicators.quote[0].close;
+    const days = new Map<string, number>();
+    (r.timestamp ?? []).forEach((t, i) => {
+      const c = closes[i];
+      if (c != null) days.set(new Date(t * 1000).toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" }), c);
+    });
+    return [...days.values()];
+  } catch {
+    return [];
+  }
+}
+
 async function yahoo(symbol: string, nazwa: string, jednostka: string): Promise<Instrument> {
   const data = await getJson<YahooChart>(
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`,
@@ -60,7 +80,11 @@ async function yahoo(symbol: string, nazwa: string, jednostka: string): Promise<
     // Ostatni punkt serii zastępujemy bieżącą ceną (w trakcie sesji zamknięcia jeszcze nie ma)
     return instrument(nazwa, jednostka, [...closes.slice(0, -1), price], { zrodlo });
   }
-  // Dla części indeksów GPW Yahoo nie ma historii — jest tylko zmiana dzienna
+  // Dla indeksów GPW (WIG20, WIG) Yahoo nie ma historii dziennej, ale ma godzinową
+  const daily = await dailyFromHourly(symbol);
+  if (daily.length > 21) {
+    return instrument(nazwa, jednostka, [...daily.slice(0, -1), price], { zrodlo });
+  }
   return instrument(nazwa, jednostka, [price], {
     zrodlo,
     d1: r.meta.regularMarketChangePercent ?? null,
@@ -75,6 +99,7 @@ const SPOLKI = [
   ["GOOGL", "Alphabet (Google)"], ["AMZN", "Amazon"], ["META", "Meta"], ["TSLA", "Tesla"],
   ["CDR.WA", "CD Projekt"], ["PKO.WA", "PKO BP"], ["PKN.WA", "Orlen"], ["KGH.WA", "KGHM"],
   ["PZU.WA", "PZU"], ["LPP.WA", "LPP"], ["DNP.WA", "Dino Polska"], ["ALE.WA", "Allegro"],
+  ["NVO", "Novo Nordisk"], ["ASML", "ASML"], ["XTB.WA", "XTB"], ["PEO.WA", "Pekao"],
 ] as const;
 
 // Spółka: rok notowań (wykres 30 sesji + odległość od rocznego szczytu/dołka). 16 spółek,

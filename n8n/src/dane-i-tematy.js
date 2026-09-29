@@ -71,13 +71,33 @@ async function bezpiecznie(nazwa, fn) {
   }
 }
 
+async function zGodzinowych(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=3mo&interval=1h`;
+    const r = (await http(url)).chart.result[0];
+    const cl = r.indicators.quote[0].close;
+    const dni = new Map();
+    (r.timestamp ?? []).forEach((t, i) => {
+      if (cl[i] != null) dni.set(new Date(t * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }), cl[i]);
+    });
+    return [...dni.values()];
+  } catch {
+    return [];
+  }
+}
+
 async function yahoo(symbol, nazwa, jednostka) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`;
   const r = (await http(url)).chart.result[0];
   const closes = r.indicators.quote[0].close.filter((x) => x != null);
   const zrodlo = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`;
   if (closes.length > 21) return instrument(nazwa, jednostka, closes, { zrodlo });
-  // Yahoo nie ma historii dla części indeksów GPW, jest tylko zmiana dzienna
+  // Dla indeksów GPW (WIG20, WIG) Yahoo nie ma historii dziennej, ale ma godzinową —
+  // dzienne zamknięcie = ostatnia wartość godzinowa danego dnia (czas warszawski)
+  const dzienne = await zGodzinowych(symbol);
+  if (dzienne.length > 21) {
+    return instrument(nazwa, jednostka, [...dzienne.slice(0, -1), r.meta.regularMarketPrice], { zrodlo });
+  }
   return instrument(nazwa, jednostka, [r.meta.regularMarketPrice], {
     zrodlo,
     d1: r.meta.regularMarketChangePercent ?? null,
@@ -240,6 +260,10 @@ const SPOLKI = [
   { symbol: 'LPP.WA', nazwa: 'LPP', zapytanie: 'LPP akcje', filtr: /\blpp\b/i },
   { symbol: 'DNP.WA', nazwa: 'Dino Polska', zapytanie: 'Dino Polska akcje', filtr: /\bdino\b/i },
   { symbol: 'ALE.WA', nazwa: 'Allegro', zapytanie: 'Allegro akcje', filtr: /allegro/i },
+  { symbol: 'NVO', nazwa: 'Novo Nordisk', zapytanie: 'Novo Nordisk akcje', filtr: /novo|wegovy|ozempic/i },
+  { symbol: 'ASML', nazwa: 'ASML', zapytanie: 'ASML akcje', filtr: /asml/i },
+  { symbol: 'XTB.WA', nazwa: 'XTB', zapytanie: 'XTB akcje', filtr: /\bxtb\b/i },
+  { symbol: 'PEO.WA', nazwa: 'Pekao', zapytanie: 'Pekao akcje', filtr: /pekao/i },
 ];
 
 // ---------- Twarde dane ----------

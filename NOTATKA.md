@@ -101,7 +101,7 @@ Dlaczego tak:
 - **Zapis do apki:** klocek Supabase w trybie **Auto-Map Input Data**, więc sam wysyła `category`, `title`, `content`, `data`.
 - **Tematy** (dodanie nowego = nowa pozycja w tablicy `tematy` w `n8n/src/dane-i-tematy.js`, potem `node n8n/build-workflow.mjs` i ponowne wklejenie):
   `zloto`, `gpw`, `usa`, `spolki`, `krypto`, `scamy`, `dzien` (podsumowanie dnia).
-- **🏢 Spółki: giganci** (od 29.09): Nvidia, AMD, Apple, Microsoft, Alphabet, Amazon, Meta, Tesla, CD Projekt, PKO BP, Orlen, KGHM, PZU, LPP, Dino, Allegro.
+- **🏢 Spółki: giganci** (od 29.09): Nvidia, AMD, Apple, Microsoft, Alphabet, Amazon, Meta, Tesla, Novo Nordisk, ASML, CD Projekt, PKO BP, Pekao, Orlen, KGHM, PZU, LPP, Dino, Allegro, XTB (20 spółek).
   - Dane: rok notowań z Yahoo (kurs, zmiany, **odległość od rocznego szczytu i dołka**), największe ruchy dnia i miesiąca.
   - Newsy: **Google News** z wyszukiwaniem po nazwie spółki (różne portale), tylko artykuły z nazwą spółki w tytule, bez wyników sportowych, filtrowane przez CERT.
   - Lista spółek jest w DWÓCH miejscach i nazwy muszą się zgadzać: `n8n/src/dane-i-tematy.js` (`SPOLKI`) i `web/src/lib/quotes.ts` (`SPOLKI`, kursy na żywo co 60 s).
@@ -113,7 +113,7 @@ Dlaczego tak:
 
 ### Znane ograniczenia
 - **Stooq** blokuje automaty (zabezpieczenie JavaScript), więc nie używamy.
-- **WIG20 i WIG z Yahoo** mają tylko zmianę dzienną, bez historii tygodniowej i miesięcznej.
+- **WIG20 i WIG:** Yahoo nie ma ich historii dziennej. Rozwiązanie (29.09): dzienne zamknięcia składane z danych **godzinowych** z 3 miesięcy (ok. 67 dni), więc jest wykres 30 sesji i zmiany tygodniowe/miesięczne (w n8n `zGodzinowych`, w apce `dailyFromHourly`).
 - **Yahoo Finance** to nieoficjalne API; jeśli padnie, raport pokaże „brak danych” zamiast się wysypać.
 - **Lista CERT** jest alfabetyczna i bez dat, więc przykłady domen są losowane, a nie „najnowsze”.
 - **Tabela n8n Supabase:** lista tabel się nie ładuje („[object Object]”), dlatego `reports` jest wpisane ręcznie; kolumny ładują się normalnie.
