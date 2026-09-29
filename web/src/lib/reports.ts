@@ -18,7 +18,31 @@ export type Instrument = {
   min52?: number;
   odSzczytu?: number | null;
   odDolka?: number | null;
+  // Analiza techniczna: RSI(14), średnie 50/200 dni i odległość kursu od nich (w %)
+  rsi?: number | null;
+  sma50?: number | null;
+  sma200?: number | null;
+  odSma50?: number | null;
+  odSma200?: number | null;
+  // Makro: grupa kafelka (stopy, waluty, surowce, nastroje, swiat) i opis po polsku
+  grupa?: string;
+  opisPl?: string;
 };
+
+export type Szerokosc = { nad: number; pod: number; wszystkie: number; nadTydzienTemu: number };
+
+export type Wydarzenie = {
+  data: string;
+  caly_dzien?: boolean;
+  kraj: string;
+  nazwa: string;
+  waznosc: "wysoka" | "średnia";
+  prognoza?: string | null;
+  poprzednio?: string | null;
+  typ: "makro" | "wyniki";
+};
+
+export type Rekomendacja = { tytul: string; link: string; domena: string; data: string | null; spolka: string | null };
 
 export type News = {
   nr: number;
@@ -44,6 +68,9 @@ export type ReportData = {
   newsy?: News[];
   odrzucone?: string[];
   cert?: CertInfo;
+  szerokosc?: Szerokosc;
+  wydarzenia?: Wydarzenie[];
+  rekomendacje?: Rekomendacja[];
 };
 
 export type Report = {
@@ -61,6 +88,8 @@ export const CATEGORIES: Record<string, { label: string; icon: string }> = {
   gpw: { label: "GPW", icon: "🇵🇱" },
   usa: { label: "Rynek USA", icon: "🇺🇸" },
   spolki: { label: "Spółki", icon: "🏢" },
+  makro: { label: "Makro", icon: "🌍" },
+  kalendarz: { label: "Kalendarz", icon: "📅" },
   krypto: { label: "Krypto", icon: "₿" },
   scamy: { label: "Scamy", icon: "🚨" },
   ogolny: { label: "Rynki", icon: "📈" },
@@ -73,8 +102,8 @@ export function categoryMeta(category: string) {
   return CATEGORIES[category] ?? { label: category, icon: "📄" };
 }
 
-// Najnowsze raporty (2 ostatnie uruchomienia n8n po 6 tematów) — wystarczy, by mieć najnowszy z każdej kategorii
-export async function recentReports(limit = 12) {
+// Najnowsze raporty (2 ostatnie uruchomienia n8n po 9 tematów) — wystarczy, by mieć najnowszy z każdej kategorii
+export async function recentReports(limit = 20) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("reports")

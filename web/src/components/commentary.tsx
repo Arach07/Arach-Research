@@ -21,8 +21,13 @@ function withCitations(text: string, keyPrefix: string, citations: boolean): Rea
 // Sekcje rozbudowanego podsumowania dnia (linia z samą nazwą i dwukropkiem)
 const SECTIONS: Record<string, string> = {
   "co się stało": "📰",
+  "od ostatniego raportu": "🔄",
+  "co przed nami": "📅",
+  "makro w pigułce": "🌍",
+  "sygnały techniczne": "📊",
   "co to znaczy": "🔗",
   "spółki w ruchu": "🏢",
+  "rekomendacje dnia": "📈",
   "pomysły do rozważenia": "💡",
   ryzyka: "⚠️",
 };

@@ -71,7 +71,7 @@ export function LiveQuotesProvider({
   return <LiveQuotesContext.Provider value={quotes}>{children}</LiveQuotesContext.Provider>;
 }
 
-function useLiveQuotes() {
+export function useLiveQuotes() {
   return useContext(LiveQuotesContext);
 }
 

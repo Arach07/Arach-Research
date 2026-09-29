@@ -122,6 +122,17 @@ Dlaczego tak:
 
 ## 5. Apka (Vercel), styl Midnight Gold
 
+### Układ informacji (od 29.09): trzy poziomy, żeby nie było młynu
+1. **📊 Dziś = raport do przeczytania raz** (9:00 / 14:00 / 20:00), rozwijany, sekcje: 📰 Co się stało · 🔄 Od ostatniego raportu · 📅 Co przed nami · 🌍 Makro w pigułce · 📊 Sygnały techniczne · 🏢 Spółki w ruchu · 📈 Rekomendacje dnia · 💡 Pomysły do rozważenia · ⚠️ Ryzyka.
+2. **🔎 Rynki = dane do przeglądania**, przełącznik u góry:
+   - **Przegląd:** złoto, GPW, USA, krypto,
+   - **Spółki:** nastrój (ile spółek nad średnią 200 dni, vs tydzień temu) + lista z plakietkami z liczbami (🟢/🔴 % vs trend, RSI, 🔵 wyprzedana / 🟠 wykupiona, ⭐ nowa rekomendacja),
+   - **Makro:** kafelki w grupach (stopy i obligacje, waluty, surowce, nastroje: VIX i Fear & Greed, świat: DAX),
+   - **Kalendarz:** wydarzenia makro (Forex Factory) i wyniki spółek z USA (Nasdaq), czas polski.
+3. **Strona spółki** (`/spolki/SYMBOL`): wykres, roczny zakres, **analiza techniczna z wyjaśnieniem po ludzku**, rekomendacje analityków dla tej spółki, newsy o niej.
+- Wskaźniki: RSI(14) metodą Wildera, średnie 50 i 200 dni; liczone w n8n (`techniczne`) i na żywo w apce (`web/src/lib/tech.ts`).
+- „Od ostatniego raportu” korzysta z pamięci workflowu n8n (`$getWorkflowStaticData`). Działa przy automatycznych uruchomieniach (przy ręcznym teście pamięć może być pusta).
+
 Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym gradiencie, zielone i czerwone zmiany.
 
 | Zakładka | Zawartość |

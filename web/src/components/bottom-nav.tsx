@@ -12,7 +12,9 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Strony spółek (/spolki/...) należą do zakładki Rynki
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/rynki" && pathname.startsWith("/spolki"));
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">

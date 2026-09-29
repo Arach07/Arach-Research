@@ -1,4 +1,5 @@
 import type { Instrument } from "./reports";
+import { technicals } from "./tech";
 
 // Kursy na żywo pobierane przez apkę (bez AI). Te same źródła co w n8n,
 // odświeżane najwyżej co 20 sekund — komentarze i newsy dalej robi n8n 3 razy dziennie.
@@ -67,9 +68,10 @@ async function dailyFromHourly(symbol: string): Promise<number[]> {
   }
 }
 
-async function yahoo(symbol: string, nazwa: string, jednostka: string): Promise<Instrument> {
+async function yahoo(symbol: string, nazwa: string, jednostka: string, revalidate = REVALIDATE_SECONDS): Promise<Instrument> {
   const data = await getJson<YahooChart>(
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`,
+    revalidate,
   );
   const r = data.chart.result[0];
   const closes = r.indicators.quote[0].close.filter((x): x is number => x != null);
@@ -124,7 +126,35 @@ async function company(symbol: string, nazwa: string): Promise<Instrument> {
     min52,
     odSzczytu: pct(price, max52),
     odDolka: pct(price, min52),
+    ...technicals(seria),
   };
+}
+
+// Makro na żywo (nazwy jak w n8n, temat "makro"). Stopa NBP i Fear & Greed zmieniają się rzadko —
+// te bierzemy z raportu. Odświeżamy najwyżej co minutę.
+async function nbpRate(kod: string, nazwa: string): Promise<Instrument> {
+  const r = await getJson<{ rates: { mid: number }[] }>(
+    `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
+    600,
+  );
+  return instrument(nazwa, "zł", r.rates.map((x) => x.mid), {
+    cyfry: 4,
+    zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
+  });
+}
+
+async function macro(): Promise<Instrument[]> {
+  const items = await Promise.all([
+    safe(() => yahoo("^TNX", "Obligacje USA 10 lat", "%", 60)),
+    safe(() => nbpRate("eur", "EUR/PLN")),
+    safe(() => nbpRate("chf", "CHF/PLN")),
+    safe(() => yahoo("BZ=F", "Ropa Brent", "USD", 60)),
+    safe(() => yahoo("HG=F", "Miedź", "USD", 60)),
+    safe(() => yahoo("SI=F", "Srebro", "USD", 60)),
+    safe(() => yahoo("^VIX", "VIX (strach na akcjach)", "pkt", 60)),
+    safe(() => yahoo("^GDAXI", "DAX (Niemcy)", "pkt", 60)),
+  ]);
+  return items.filter((i): i is Instrument => i !== null);
 }
 
 async function nbpGold(): Promise<Instrument> {
@@ -189,6 +219,7 @@ export type LiveQuotes = {
 
 export async function liveQuotes(): Promise<LiveQuotes> {
   const companiesPromise = Promise.all(SPOLKI.map(([symbol, nazwa]) => safe(() => company(symbol, nazwa))));
+  const macroPromise = macro();
   const [gold, goldUsd, usd, wig20, wig, spx, nasdaq, dow, coins] = await Promise.all([
     safe(nbpGold),
     safe(() => yahoo("GC=F", "Złoto (1 uncja)", "USD")),
@@ -211,6 +242,7 @@ export async function liveQuotes(): Promise<LiveQuotes> {
       usa: only(spx, nasdaq, dow),
       krypto: coins ?? [],
       spolki: companies,
+      makro: [...(usd ? [usd] : []), ...(await macroPromise)],
     },
     ticker: only(gold, wig20, spx, coins?.[0] ?? null, usd),
     fetchedAt: new Date().toISOString(),
