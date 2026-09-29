@@ -1,14 +1,13 @@
 import { BottomNav } from "@/components/bottom-nav";
 import { LiveQuotesProvider } from "@/components/live-quotes";
-import { liveQuotes } from "@/lib/quotes";
 import { latestReportAt } from "@/lib/reports";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  // Pierwsze kursy z serwera (potem przeglądarka dociąga je co 20 s z /api/kursy)
-  // i data najnowszego raportu (co minutę sprawdzamy, czy n8n dodał nowy)
-  const [initial, latest] = await Promise.all([liveQuotes(), latestReportAt()]);
+  // Kursy na żywo dociąga przeglądarka zaraz po otwarciu (i potem co 20 s) — strona nie czeka na nie.
+  // Serwer podaje tylko datę najnowszego raportu (co minutę sprawdzamy, czy n8n dodał nowy).
+  const latest = await latestReportAt();
   return (
-    <LiveQuotesProvider initial={initial} latestReportAt={latest}>
+    <LiveQuotesProvider latestReportAt={latest}>
       {/* min-h-[100dvh]: strona zawsze co najmniej na wysokość ekranu (także podczas ładowania),
           żeby telefon nie przesuwał swoich pasków i naszego dolnego menu przy zmianie zakładek */}
       <main className="mx-auto min-h-[100dvh] w-full max-w-2xl flex-1 px-4 pt-6 pb-28">{children}</main>

@@ -13,15 +13,14 @@ const NEW_REPORT_CHECK_MS = 60_000;
 const LiveQuotesContext = createContext<LiveQuotes | null>(null);
 
 export function LiveQuotesProvider({
-  initial,
   latestReportAt,
   children,
 }: {
-  initial: LiveQuotes;
   latestReportAt: string | null;
   children: React.ReactNode;
 }) {
-  const [quotes, setQuotes] = useState(initial);
+  // Do czasu pierwszego pobrania komponenty pokazują kursy z ostatniego raportu
+  const [quotes, setQuotes] = useState<LiveQuotes | null>(null);
   const router = useRouter();
   const knownReportAt = useRef(latestReportAt);
 
@@ -58,6 +57,7 @@ export function LiveQuotesProvider({
       checkNewReport();
     };
 
+    loadQuotes();
     const quotesTimer = window.setInterval(loadQuotes, QUOTES_EVERY_MS);
     const reportTimer = window.setInterval(checkNewReport, NEW_REPORT_CHECK_MS);
     document.addEventListener("visibilitychange", onVisible);

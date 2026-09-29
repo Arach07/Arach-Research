@@ -7,20 +7,19 @@ import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
-import { liveQuotes, mergeInstruments, withLive } from "@/lib/quotes";
-import { MARKET_ORDER, latestByCategory, recentReports } from "@/lib/reports";
+import { MARKET_ORDER, latestReports } from "@/lib/reports";
 
 export default async function TodayPage() {
-  const [{ reports, error }, live] = await Promise.all([recentReports(), liveQuotes()]);
-  const latest = latestByCategory(reports);
+  const { latest, error } = await latestReports([...MARKET_ORDER, "scamy", "dzien"]);
+  const reports = Object.values(latest).sort((a, b) => b.created_at.localeCompare(a.created_at));
   const summary = latest.dzien;
-  const markets = MARKET_ORDER.map((c) => latest[c])
-    .filter(Boolean)
-    .map((r) => withLive(r, live));
+  // Kursy na żywo podmieniają się w przeglądarce (komponenty kursów same je pobierają)
+  const markets = MARKET_ORDER.map((c) => latest[c]).filter(Boolean);
   const scams = latest.scamy;
 
-  // Pasek kursów: na żywo, a brakujące uzupełnione danymi z podsumowania dnia
-  const ticker = mergeInstruments(live.ticker, summary?.data?.instrumenty);
+  // Pasek kursów: instrumenty z podsumowania dnia (wartości na żywo podstawia przeglądarka)
+  const ticker =
+    summary?.data?.instrumenty ?? markets.flatMap((r) => r.data?.instrumenty?.filter((i) => !i.blad).slice(0, 1) ?? []);
   const newest = reports[0]?.created_at;
 
   return (

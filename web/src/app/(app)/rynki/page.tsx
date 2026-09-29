@@ -5,8 +5,8 @@ import { LiveBadge } from "@/components/live-quotes";
 import { BreadthCard, CompanyRow, MacroTile } from "@/components/market-views";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { formatDay } from "@/lib/format";
-import { liveQuotes, withLive } from "@/lib/quotes";
-import { categoryMeta, latestByCategory, recentReports, type Report, type Wydarzenie } from "@/lib/reports";
+import { categoryMeta, latestReports, type Report, type Wydarzenie } from "@/lib/reports";
+import { ViewTabs } from "@/components/view-tabs";
 
 const VIEWS = [
   { id: "przeglad", label: "Przegląd" },
@@ -25,24 +25,6 @@ const MACRO_GROUPS = [
   { id: "nastroje", label: "😨 Nastroje" },
   { id: "swiat", label: "🌐 Świat" },
 ];
-
-function Tabs({ active }: { active: View }) {
-  return (
-    <nav className="mb-5 flex rounded-xl border border-line bg-white/[0.03] p-1">
-      {VIEWS.map((v) => (
-        <Link
-          key={v.id}
-          href={v.id === "przeglad" ? "/rynki" : `/rynki?widok=${v.id}`}
-          className={`flex-1 rounded-lg py-1.5 text-center text-[13px] transition-colors ${
-            v.id === active ? "bg-accent/15 font-semibold text-accent" : "text-muted hover:text-foreground"
-          }`}
-        >
-          {v.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
 
 function AiNote({ report }: { report?: Report }) {
   if (!report?.data?.komentarz) return null;
@@ -180,18 +162,22 @@ export default async function MarketsPage({ searchParams }: PageProps<"/rynki">)
   const { widok } = await searchParams;
   const view: View = VIEWS.some((v) => v.id === widok) ? (widok as View) : "przeglad";
 
-  const [{ reports }, live] = await Promise.all([recentReports(), liveQuotes()]);
-  const latestRaw = latestByCategory(reports);
-  const latest = Object.fromEntries(Object.entries(latestRaw).map(([k, r]) => [k, withLive(r, live)]));
+  // Kursy na żywo dociąga przeglądarka (co 20 s) — serwer podaje tylko ostatnie raporty
+  const { latest } = await latestReports([...OVERVIEW, "spolki", "makro", "kalendarz"]);
 
   return (
     <>
       <PageHeader title="Rynki" subtitle="Kursy, spółki, makro i kalendarz" action={<LiveBadge />} />
-      <Tabs active={view} />
-      {view === "przeglad" && <Overview latest={latest} />}
-      {view === "spolki" && <Companies report={latest.spolki} />}
-      {view === "makro" && <Macro report={latest.makro} />}
-      {view === "kalendarz" && <Calendar report={latestRaw.kalendarz} />}
+      <ViewTabs
+        views={VIEWS}
+        initial={view}
+        panels={{
+          przeglad: <Overview latest={latest} />,
+          spolki: <Companies report={latest.spolki} />,
+          makro: <Macro report={latest.makro} />,
+          kalendarz: <Calendar report={latest.kalendarz} />,
+        }}
+      />
     </>
   );
 }

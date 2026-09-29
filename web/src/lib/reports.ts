@@ -114,6 +114,20 @@ export async function recentReports(limit = 20) {
   return { reports: data ?? [], error: error?.message ?? null };
 }
 
+// Najnowszy raport z każdej z podanych kategorii — jedno lekkie zapytanie zamiast wielu pełnych raportów
+export async function latestReports(categories: string[]) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reports")
+    .select("*")
+    .in("category", categories)
+    .order("created_at", { ascending: false })
+    // Jedno uruchomienie n8n zapisuje po 1 raporcie na temat, więc 2× zapas wystarcza
+    .limit(categories.length * 2)
+    .returns<Report[]>();
+  return { latest: latestByCategory(data ?? []), error: error?.message ?? null };
+}
+
 // Najnowszy raport dla każdej kategorii
 export function latestByCategory(reports: Report[]) {
   const latest: Record<string, Report> = {};

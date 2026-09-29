@@ -147,7 +147,8 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 - Instalacja na telefonie: otwórz adres apki, potem Udostępnij, potem „Dodaj do ekranu początkowego”.
 - Raporty się **nie nadpisują**: każde uruchomienie dopisuje 6 nowych. „Dziś” i „Rynki” pokazują najnowsze, a starsze są w Archiwum.
 - Miejsce: ok. 0,3 MB dziennie przy 12–18 raportach, a darmowy Supabase ma 500 MB, co daje ok. 3–4 lata.
-- **Limity darmowego Supabase:** baza 500 MB, transfer ok. 5 GB/mies. Raporty zajmują ok. 0,4 MB/dzień.
+- **Limity darmowego Supabase:** baza 500 MB, transfer ok. 5 GB/mies. Pomiar 29.09 (9 tematów): **1 raport ≈ 117 KB** (Spółki 43 KB, Podsumowanie 25 KB, Makro 15 KB), **dziennie ≈ 0,34 MB**, **30 dni ≈ 10 MB (ok. 2% limitu)**, więc sprzątanie po 30 dniach w zupełności wystarcza.
+- **Szybkość (29.09):** Rynki mają wszystkie 4 widoki od razu w przeglądarce, więc przełączanie Przegląd/Spółki/Makro/Kalendarz jest natychmiastowe (`web/src/components/view-tabs.tsx`). Serwer nie pobiera już kursów na żywo przy ładowaniu stron; robi to przeglądarka (`/api/kursy`) zaraz po otwarciu i co 20 s. Z bazy pobierany jest tylko najnowszy raport z potrzebnych tematów (`latestReports`).
 - **Sprzątanie:** raporty starsze niż **30 dni** usuwa co noc zadanie w bazie (pg_cron), plik `supabase/cleanup.sql`. Uruchomione 28.09.2026 (zadanie `usun-stare-raporty`, codziennie 3:00 UTC).
 - **Do zrobienia później:** Archiwum pokazuje ostatnie 100 raportów; przy 30 dniach to ok. 5 dni, więc trzeba dodać „pokaż starsze”.
 
