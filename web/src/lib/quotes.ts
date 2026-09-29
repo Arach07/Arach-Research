@@ -176,30 +176,27 @@ async function nbpUsd(): Promise<Instrument> {
   });
 }
 
-type CoinGeckoMarket = {
-  id: string;
-  name: string;
-  current_price: number;
-  sparkline_in_7d?: { price: number[] };
-  price_change_percentage_24h_in_currency?: number;
-  price_change_percentage_7d_in_currency?: number;
-  price_change_percentage_30d_in_currency?: number;
-};
+// Krypto z Yahoo (CoinGecko od 29.09 zwraca 403). Notowania 7 dni w tygodniu,
+// więc tydzień = 7 punktów wstecz, a miesiąc = 30 (a nie 5 i 21 jak na giełdzie)
+async function cryptoYahoo(symbol: string, nazwa: string): Promise<Instrument> {
+  const data = await getJson<YahooChart>(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2mo&interval=1d`,
+  );
+  const r = data.chart.result[0];
+  const closes = r.indicators.quote[0].close.filter((x): x is number => x != null);
+  const s = [...closes.slice(0, -1), r.meta.regularMarketPrice];
+  const back = (n: number) => (s.length > n ? s[s.length - 1 - n] : null);
+  const last = s[s.length - 1];
+  return instrument(nazwa, "USD", s, {
+    cyfry: 0,
+    zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
+    d7: pct(last, back(7)),
+    d30: pct(last, back(30)),
+  });
+}
 
 async function crypto(): Promise<Instrument[]> {
-  const cg = await getJson<CoinGeckoMarket[]>(
-    "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=24h,7d,30d&sparkline=true",
-  );
-  return cg.map((c) => {
-    const seria = (c.sparkline_in_7d?.price ?? []).filter((_, i) => i % 6 === 0);
-    return instrument(c.name, "USD", [...seria, c.current_price], {
-      cyfry: 0,
-      zrodlo: `https://www.coingecko.com/pl/waluty/${c.id}`,
-      d1: c.price_change_percentage_24h_in_currency ?? null,
-      d7: c.price_change_percentage_7d_in_currency ?? null,
-      d30: c.price_change_percentage_30d_in_currency ?? null,
-    });
-  });
+  return Promise.all([cryptoYahoo("BTC-USD", "Bitcoin"), cryptoYahoo("ETH-USD", "Ethereum")]);
 }
 
 // Błąd jednego źródła nie psuje reszty — wtedy apka pokaże dane z ostatniego raportu

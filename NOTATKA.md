@@ -14,7 +14,7 @@ złoto, GPW, rynek USA, krypto, ostrzeżenia przed scamami oraz podsumowanie dni
 
 ```
 [n8n: harmonogram 9:00 / 14:00 / 20:00]
-   → pobiera twarde dane z API (NBP, Yahoo Finance, CoinGecko, lista CERT Polska)
+   → pobiera twarde dane z API (NBP, Yahoo Finance, lista CERT Polska)
    → pobiera newsy z RSS 13 zaufanych portali
    → Gemini pisze komentarz TYLKO na podstawie tych danych, z numerami źródeł [1] [2]
    → weryfikacja: każdy link sprawdzany na liście niebezpiecznych domen CERT Polska
@@ -108,12 +108,13 @@ Dlaczego tak:
 - **🧠 Podsumowanie dnia** (od 29.09) jest dłuższe (ok. 300–450 słów), w sekcjach: 📰 Co się stało, 🔗 Co to znaczy, 🏢 Spółki w ruchu, **💡 Pomysły do rozważenia**, ⚠️ Ryzyka. Pomysły są formułowane jako „można rozważyć / warto przeanalizować”, z liczbami i źródłami, nigdy „kup”. Na końcu dopisek, że to informacja, a nie porada inwestycyjna.
 
 ### Źródła danych
-- **Twarde dane:** NBP (złoto 1 g, USD/PLN, 30 dni), Yahoo Finance (złoto w USD, WIG20, WIG, S&P 500, Nasdaq, Dow Jones), CoinGecko (Bitcoin, Ethereum), lista CERT Polska (ok. 130 tys. domen, w tym ok. 4,5 tys. „finansowych”).
+- **Twarde dane:** NBP (złoto 1 g, USD/PLN, 30 dni), Yahoo Finance (złoto w USD, WIG20, WIG, S&P 500, Nasdaq, Dow Jones, Bitcoin i Ethereum: `BTC-USD`, `ETH-USD`), lista CERT Polska (ok. 130 tys. domen, w tym ok. 4,5 tys. „finansowych”).
 - **RSS:** Bankier (x2), Money.pl, Parkiet, Puls Biznesu, Business Insider, Comparic, CNBC, MarketWatch, Yahoo Finance, CoinDesk, Cointelegraph, CERT Polska, Sekurak. Maksymalnie 3 newsy z jednego portalu na temat.
 
 ### Znane ograniczenia
 - **Stooq** blokuje automaty (zabezpieczenie JavaScript), więc nie używamy.
 - **WIG20 i WIG:** Yahoo nie ma ich historii dziennej. Rozwiązanie (29.09): dzienne zamknięcia składane z danych **godzinowych** z 3 miesięcy (ok. 67 dni), więc jest wykres 30 sesji i zmiany tygodniowe/miesięczne (w n8n `zGodzinowych`, w apce `dailyFromHourly`).
+- **CoinGecko** od 29.09 rano zwraca 403 (blokada), więc krypto pobieramy z Yahoo.
 - **Yahoo Finance** to nieoficjalne API; jeśli padnie, raport pokaże „brak danych” zamiast się wysypać.
 - **Lista CERT** jest alfabetyczna i bez dat, więc przykłady domen są losowane, a nie „najnowsze”.
 - **Tabela n8n Supabase:** lista tabel się nie ładuje („[object Object]”), dlatego `reports` jest wpisane ręcznie; kolumny ładują się normalnie.
@@ -142,7 +143,7 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 | 🛡️ **Scamy** | **„Sprawdź link”** (🔴 z listy CERT / 🟡 podejrzana / 🟢 oficjalna / ⚪ brak na liście), porady, ostrzeżenia |
 | 📁 **Archiwum** | raporty pogrupowane po dniach + wyszukiwarka |
 
-- **Kursy na żywo:** zakładki Dziś i Rynki oraz szczegóły tematu pobierają kursy bezpośrednio (NBP, Yahoo, CoinGecko), bez AI. Przeglądarka co 20 s odpytuje `/api/kursy`, co **nie dotyka bazy Supabase**, więc nie zużywa limitu transferu. Nowe raporty: apka co minutę pyta `/api/najnowszy-raport` tylko o datę najnowszego raportu (~100 bajtów) i gdy n8n doda nowy, sama go wczytuje (najpóźniej ok. 1 min po zapisie). Oznaczenie: zielona kropka i „Kursy na żywo · GG:MM”. Kod: `web/src/lib/quotes.ts`. Komentarze AI i newsy dalej pochodzą z raportu n8n (3 razy dziennie). Archiwum pokazuje kursy z chwili raportu.
+- **Kursy na żywo:** zakładki Dziś i Rynki oraz szczegóły tematu pobierają kursy bezpośrednio (NBP, Yahoo), bez AI. Przeglądarka co 20 s odpytuje `/api/kursy`, co **nie dotyka bazy Supabase**, więc nie zużywa limitu transferu. Nowe raporty: apka co minutę pyta `/api/najnowszy-raport` tylko o datę najnowszego raportu (~100 bajtów) i gdy n8n doda nowy, sama go wczytuje (najpóźniej ok. 1 min po zapisie). Oznaczenie: zielona kropka i „Kursy na żywo · GG:MM”. Kod: `web/src/lib/quotes.ts`. Komentarze AI i newsy dalej pochodzą z raportu n8n (3 razy dziennie). Archiwum pokazuje kursy z chwili raportu.
   - Częstotliwość zmian w źródłach: złoto NBP i USD/PLN raz dziennie (dni robocze ok. 12:00), GPW w trakcie sesji 9:00–17:00 (ok. 15 min opóźnienia), USA 15:30–22:00, krypto 24/7.
 - Instalacja na telefonie: otwórz adres apki, potem Udostępnij, potem „Dodaj do ekranu początkowego”.
 - Raporty się **nie nadpisują**: każde uruchomienie dopisuje 6 nowych. „Dziś” i „Rynki” pokazują najnowsze, a starsze są w Archiwum.

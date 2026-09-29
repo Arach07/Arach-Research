@@ -344,22 +344,24 @@ const usa = await bezpiecznie('USA', async () => [
   await yahoo('^IXIC', 'Nasdaq', 'pkt'),
   await yahoo('^DJI', 'Dow Jones', 'pkt'),
 ]);
-const krypto = await bezpiecznie('CoinGecko', async () => {
-  const cg = await http(
-    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=24h,7d,30d&sparkline=true',
-  );
-  return cg.map((c) => {
-    // sparkline to 7 dni co godzinę — co 6. punkt wystarczy do wykresu
-    const seria = (c.sparkline_in_7d?.price ?? []).filter((_, i) => i % 6 === 0);
-    return instrument(c.name, 'USD', [...seria, c.current_price], {
-      cyfry: 0,
-      zrodlo: `https://www.coingecko.com/pl/waluty/${c.id}`,
-      d1: c.price_change_percentage_24h_in_currency ?? null,
-      d7: c.price_change_percentage_7d_in_currency ?? null,
-      d30: c.price_change_percentage_30d_in_currency ?? null,
-    });
+// Krypto z Yahoo (CoinGecko od 29.09 zwraca 403). Notowania 7 dni w tygodniu,
+// więc tydzień = 7 punktów wstecz, a miesiąc = 30 (a nie 5 i 21 jak na giełdzie)
+async function kryptoYahoo(symbol, nazwa) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2mo&interval=1d`;
+  const r = (await http(url)).chart.result[0];
+  const s = [...r.indicators.quote[0].close.filter((x) => x != null).slice(0, -1), r.meta.regularMarketPrice];
+  const back = (n) => (s.length > n ? s[s.length - 1 - n] : null);
+  const last = s[s.length - 1];
+  return instrument(nazwa, 'USD', s, {
+    cyfry: 0,
+    zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
+    d7: pct(last, back(7)),
+    d30: pct(last, back(30)),
   });
-});
+}
+const krypto = await bezpiecznie('Krypto (Yahoo)', async () =>
+  Promise.all([kryptoYahoo('BTC-USD', 'Bitcoin'), kryptoYahoo('ETH-USD', 'Ethereum')]),
+);
 
 // Spółki: kursy z rocznej historii + po 2 najnowsze newsy o każdej z Google News (równolegle)
 const spolki = await Promise.all(
