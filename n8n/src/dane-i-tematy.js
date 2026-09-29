@@ -39,9 +39,55 @@ const opis = (i) =>
     : `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka} | dzień ${fmtPct(i.d1)} | tydzień ${fmtPct(i.d7)} | miesiąc ${fmtPct(i.d30)}` +
       (i.odSzczytu != null
         ? ` | od szczytu 52 tyg.: ${fmtPct(i.odSzczytu)} | od dołka 52 tyg.: ${fmtPct(i.odDolka)}`
-        : '');
+        : '') +
+      (i.rsi != null ? ` | RSI(14): ${Math.round(i.rsi)}` : '') +
+      (i.odSma200 != null ? ` | vs średnia 200 dni: ${fmtPct(i.odSma200)}` : '') +
+      (i.odSma50 != null ? ` | vs średnia 50 dni: ${fmtPct(i.odSma50)}` : '') +
+      (i.opisPl ? ` | ${i.opisPl}` : '');
 
-// Spółka: rok notowań z Yahoo — kurs, zmiany, wykres 30 sesji i odległość od rocznego szczytu/dołka
+// ---------- Analiza techniczna (liczona z historii kursów) ----------
+
+const srednia = (seria, n) => (seria.length >= n ? seria.slice(-n).reduce((s, x) => s + x, 0) / n : null);
+
+// RSI (14 sesji, metoda Wildera): <30 = wyprzedana, >70 = wykupiona
+function rsi(seria, n = 14) {
+  if (seria.length <= n) return null;
+  let zysk = 0;
+  let strata = 0;
+  for (let i = 1; i <= n; i++) {
+    const d = seria[i] - seria[i - 1];
+    if (d >= 0) zysk += d;
+    else strata -= d;
+  }
+  zysk /= n;
+  strata /= n;
+  for (let i = n + 1; i < seria.length; i++) {
+    const d = seria[i] - seria[i - 1];
+    zysk = (zysk * (n - 1) + Math.max(d, 0)) / n;
+    strata = (strata * (n - 1) + Math.max(-d, 0)) / n;
+  }
+  return strata === 0 ? 100 : 100 - 100 / (1 + zysk / strata);
+}
+
+function techniczne(seria) {
+  const cena = seria[seria.length - 1];
+  const sma50 = srednia(seria, 50);
+  const sma200 = srednia(seria, 200);
+  // Czy tydzień (5 sesji) temu kurs był nad średnią 200 dni — do porównania "szerokości rynku"
+  const tydzien = seria.slice(0, -5);
+  const sma200Tydzien = srednia(tydzien, 200);
+  return {
+    rsi: rsi(seria),
+    sma50,
+    sma200,
+    odSma50: pct(cena, sma50),
+    odSma200: pct(cena, sma200),
+    nadTrendemTydzienTemu: sma200Tydzien != null ? tydzien[tydzien.length - 1] > sma200Tydzien : null,
+  };
+}
+
+// Spółka: rok notowań z Yahoo — kurs, zmiany, wykres 30 sesji, odległość od rocznego szczytu/dołka
+// i wskaźniki techniczne (RSI, średnie 50/200 dni)
 async function spolka(s) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s.symbol)}?range=1y&interval=1d`;
   const r = (await http(url)).chart.result[0];
@@ -59,6 +105,7 @@ async function spolka(s) {
     min52,
     odSzczytu: pct(cena, max52),
     odDolka: pct(cena, min52),
+    ...techniczne(seria),
   };
 }
 
@@ -336,6 +383,213 @@ const ruchy = [
   `Najmocniej w dół (miesiąc): ${poZmianie('d30').slice(0, 3).map((s) => `${s.nazwa} ${fmtPct(s.d30)}`).join(', ')}`,
 ];
 
+// ---------- Szerokość rynku i sygnały techniczne ----------
+
+const zTrendem = zDanymi.filter((s) => s.odSma200 != null);
+const szerokosc = {
+  nad: zTrendem.filter((s) => s.odSma200 >= 0).length,
+  pod: zTrendem.filter((s) => s.odSma200 < 0).length,
+  wszystkie: zTrendem.length,
+  nadTydzienTemu: zTrendem.filter((s) => s.nadTrendemTydzienTemu).length,
+};
+const sygnaly = [
+  `Szerokość rynku: ${szerokosc.nad} z ${szerokosc.wszystkie} spółek nad średnią 200 dni (tydzień temu ${szerokosc.nadTydzienTemu})`,
+  ...zDanymi.filter((s) => s.rsi != null && s.rsi <= 30).map((s) => `${s.nazwa}: RSI ${Math.round(s.rsi)} — wyprzedana`),
+  ...zDanymi.filter((s) => s.rsi != null && s.rsi >= 70).map((s) => `${s.nazwa}: RSI ${Math.round(s.rsi)} — wykupiona`),
+  ...zDanymi
+    .filter((s) => s.odSma200 != null && Math.abs(s.odSma200) <= 2)
+    .map((s) => `${s.nazwa}: blisko średniej 200 dni (${fmtPct(s.odSma200)}) — test ważnego poziomu`),
+];
+
+// ---------- Makro: stopy, obligacje, waluty, surowce, nastroje ----------
+
+const zGrupa = (grupa, lista) => lista.map((i) => ({ ...i, grupa }));
+const walutaNbp = async (kod, nazwa) => {
+  const r = (await http(`https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`)).rates;
+  return instrument(nazwa, 'zł', r.map((x) => x.mid), {
+    cyfry: 4,
+    zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
+  });
+};
+const stopaNbp = await bezpiecznie('Stopa NBP', async () => {
+  const xml = await http('https://static.nbp.pl/dane/stopy/stopy_procentowe.xml', false);
+  const ref = xml.match(/id="ref"[\s\S]*?oprocentowanie="([\d,]+)"[\s\S]*?trend\s*=\s*"([^"]*)"[\s\S]*?obowiazuje_od="([^"]+)"/);
+  if (!ref) throw new Error('brak stopy referencyjnej');
+  return [
+    {
+      nazwa: 'Stopa referencyjna NBP',
+      jednostka: '%',
+      wartosc: Number(ref[1].replace(',', '.')),
+      cyfry: 2,
+      d1: null,
+      d7: null,
+      d30: null,
+      seria: [],
+      zrodlo: 'https://nbp.pl/polityka-pieniezna/decyzje-rpp/podstawowe-stopy-procentowe-nbp/',
+      opisPl: `obowiązuje od ${ref[3]}, ostatni ruch: ${ref[2]}`,
+    },
+  ];
+});
+const fearGreed = await bezpiecznie('Fear & Greed (krypto)', async () => {
+  const f = (await http('https://api.alternative.me/fng/?limit=8')).data;
+  const pl = { 'Extreme Fear': 'skrajny strach', Fear: 'strach', Neutral: 'neutralnie', Greed: 'chciwość', 'Extreme Greed': 'skrajna chciwość' };
+  return [
+    {
+      nazwa: 'Fear & Greed (krypto)',
+      jednostka: '/100',
+      wartosc: Number(f[0].value),
+      cyfry: 0,
+      d1: null,
+      d7: pct(Number(f[0].value), Number(f[7].value)),
+      d30: null,
+      seria: f.map((x) => Number(x.value)).reverse(),
+      zrodlo: 'https://alternative.me/crypto/fear-and-greed-index/',
+      opisPl: pl[f[0].value_classification] ?? f[0].value_classification,
+    },
+  ];
+});
+const makro = [
+  ...zGrupa('stopy', [
+    ...stopaNbp,
+    ...(await bezpiecznie('USA 10 lat', async () => [await yahoo('^TNX', 'Obligacje USA 10 lat', '%')])),
+  ]),
+  ...zGrupa('waluty', [
+    ...usdPln,
+    ...(await bezpiecznie('EUR/PLN', async () => [await walutaNbp('eur', 'EUR/PLN')])),
+    ...(await bezpiecznie('CHF/PLN', async () => [await walutaNbp('chf', 'CHF/PLN')])),
+  ]),
+  ...zGrupa('surowce', [
+    ...(await bezpiecznie('Ropa Brent', async () => [await yahoo('BZ=F', 'Ropa Brent', 'USD')])),
+    ...(await bezpiecznie('Miedź', async () => [await yahoo('HG=F', 'Miedź', 'USD')])),
+    ...(await bezpiecznie('Srebro', async () => [await yahoo('SI=F', 'Srebro', 'USD')])),
+  ]),
+  ...zGrupa('nastroje', [
+    ...(await bezpiecznie('VIX', async () => [await yahoo('^VIX', 'VIX (strach na akcjach)', 'pkt')])),
+    ...fearGreed,
+  ]),
+  ...zGrupa('swiat', [...(await bezpiecznie('DAX', async () => [await yahoo('^GDAXI', 'DAX (Niemcy)', 'pkt')]))]),
+];
+
+// ---------- Kalendarz: dane makro (Forex Factory) + wyniki spółek z USA (Nasdaq) ----------
+
+const KRAJE = { USD: '🇺🇸 USA', EUR: '🇪🇺 Strefa euro', CNY: '🇨🇳 Chiny', GBP: '🇬🇧 W. Brytania', JPY: '🇯🇵 Japonia' };
+const wydarzenia = [];
+try {
+  const xml = await http('https://nfs.faireconomy.media/ff_calendar_thisweek.xml', false);
+  const pole = (e, n) => czysc(tag(e, n) ?? '');
+  for (const e of xml.split('<event>').slice(1)) {
+    const kraj = pole(e, 'country');
+    const waznosc = pole(e, 'impact');
+    // Ważne dla nas: wszystkie "High" z głównych gospodarek + "Medium" z USA i strefy euro
+    if (!KRAJE[kraj] || !(waznosc === 'High' || (waznosc === 'Medium' && (kraj === 'USD' || kraj === 'EUR')))) continue;
+    const [mm, dd, rrrr] = pole(e, 'date').split('-');
+    const g = pole(e, 'time').match(/(\d+):(\d+)(am|pm)/i);
+    let data = null;
+    if (g) {
+      const h = (Number(g[1]) % 12) + (g[3].toLowerCase() === 'pm' ? 12 : 0);
+      data = new Date(Date.UTC(Number(rrrr), Number(mm) - 1, Number(dd), h, Number(g[2]))).toISOString();
+    } else {
+      data = new Date(Date.UTC(Number(rrrr), Number(mm) - 1, Number(dd), 12)).toISOString();
+    }
+    if (new Date(data).getTime() < Date.now() - 6 * 3600 * 1000) continue; // pomijamy to, co już dawno było
+    wydarzenia.push({
+      data,
+      caly_dzien: !g,
+      kraj: KRAJE[kraj],
+      nazwa: pole(e, 'title'),
+      waznosc: waznosc === 'High' ? 'wysoka' : 'średnia',
+      prognoza: pole(e, 'forecast') || null,
+      poprzednio: pole(e, 'previous') || null,
+      typ: 'makro',
+    });
+  }
+} catch {}
+const SPOLKI_USA = SPOLKI.filter((s) => !s.symbol.includes('.'));
+for (let i = 0; i < 14; i++) {
+  const dzien = new Date(Date.now() + i * 864e5).toISOString().slice(0, 10);
+  try {
+    const j = await http(`https://api.nasdaq.com/api/calendar/earnings?date=${dzien}`);
+    for (const row of j?.data?.rows ?? []) {
+      const s = SPOLKI_USA.find((x) => x.symbol === row.symbol);
+      if (!s) continue;
+      wydarzenia.push({
+        data: new Date(`${dzien}T12:00:00Z`).toISOString(),
+        caly_dzien: true,
+        kraj: '🏢 Wyniki',
+        nazwa: `${s.nazwa} publikuje wyniki kwartalne${/after/i.test(row.time ?? '') ? ' (po sesji)' : /pre/i.test(row.time ?? '') ? ' (przed sesją)' : ''}`,
+        waznosc: 'wysoka',
+        prognoza: row.epsForecast ? `EPS ${row.epsForecast}` : null,
+        poprzednio: null,
+        typ: 'wyniki',
+      });
+    }
+  } catch {
+    break; // Nasdaq nie odpowiada — pomijamy wyniki
+  }
+}
+wydarzenia.sort((a, b) => a.data.localeCompare(b.data));
+const kalendarzTekst = wydarzenia.slice(0, 25).map(
+  (w) =>
+    `${new Date(w.data).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', weekday: 'short', day: '2-digit', month: '2-digit', ...(w.caly_dzien ? {} : { hour: '2-digit', minute: '2-digit' }) })} ${w.kraj}: ${w.nazwa} (ważność: ${w.waznosc}${w.prognoza ? `, prognoza ${w.prognoza}` : ''}${w.poprzednio ? `, poprzednio ${w.poprzednio}` : ''})`,
+);
+
+// ---------- Rekomendacje analityków (z newsów: RSS + Google News) ----------
+
+// Granice słów liczone ręcznie (JS nie traktuje "ą", "ę" itd. jako liter), żeby nie łapać
+// "s-kupuj-e akcje" ani "kupuj-ącym". "upgrade/downgrade" tylko w kontekście ratingu (nie "upgrade sieci").
+const REKOMENDACJA = /rekomendac|cen[ayę] docelow|(^|[^a-ząćęłńóśźż])(kupuj|trzymaj|sprzedaj|akumuluj|redukuj)(?![a-ząćęłńóśźż])|overweight|underweight|outperform|underperform|price target|(upgrade|downgrade)[sd]?\b.{0,40}\b(to (buy|sell|hold|neutral|overweight|underweight|outperform)|rating)|(podnosi|obniża|podtrzymuje) (ocen|rekomend|cen[ęy] docelow)/i;
+// Spółka, której nazwa pada w tytule NAJWCZEŚNIEJ (np. "Allegro … menedżerki z Amazona" → Allegro)
+const spolkaZTytulu = (tytul) =>
+  SPOLKI.map((s) => ({ s, i: tytul.search(s.filtr) }))
+    .filter((x) => x.i >= 0)
+    .sort((a, b) => a.i - b.i)[0]?.s.nazwa ?? null;
+const wszystkieNewsy = [
+  ...(await Promise.all(Object.keys(RSS).map(pobierzKanal))).flat(),
+  ...(await newsyOSpolce({ nazwa: 'Rekomendacje', zapytanie: 'rekomendacja akcje cena docelowa' }, 12)),
+  ...newsySpolek,
+];
+const widzianeRek = new Set();
+const rekomendacje = wszystkieNewsy
+  .filter((n) => REKOMENDACJA.test(n.tytul))
+  .filter((n) => {
+    const t = new Date(n.data ?? 0).getTime();
+    return !t || t >= Date.now() - 4 * 864e5;
+  })
+  .filter((n) => !widzianeRek.has(n.tytul) && widzianeRek.add(n.tytul))
+  .map((n) => ({ ...n, spolka: spolkaZTytulu(n.tytul) }))
+  .sort((a, b) => Number(Boolean(b.spolka)) - Number(Boolean(a.spolka)))
+  .slice(0, 12)
+  .map((n, i) => ({
+    ...n,
+    nr: i + 1,
+    opis: n.spolka ?? 'rekomendacja',
+    data: n.data instanceof Date ? n.data.toISOString() : n.data,
+  }));
+
+// ---------- Co się zmieniło od ostatniego raportu (pamięć workflowu) ----------
+// n8n zapamiętuje kursy między automatycznymi uruchomieniami (przy ręcznym teście pamięć może być pusta).
+
+const pamiec = $getWorkflowStaticData('global');
+const poprzedni = pamiec.ostatniRaport ?? null;
+const kluczowe = [...zloto, ...zlotoUsd, ...gpw, ...usa, ...krypto, ...usdPln, ...makro.filter((m) => m.grupa === 'surowce'), ...zDanymi]
+  .filter((i) => !i.blad && i.wartosc != null);
+const odOstatniego = [];
+if (poprzedni?.ceny) {
+  const zmiany = kluczowe
+    .filter((i) => poprzedni.ceny[i.nazwa] != null)
+    .map((i) => ({ nazwa: i.nazwa, zmiana: pct(i.wartosc, poprzedni.ceny[i.nazwa]) }))
+    .filter((z) => z.zmiana != null && Math.abs(z.zmiana) >= 0.05);
+  const godzina = new Date(poprzedni.czas).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  odOstatniego.push(
+    `Poprzedni raport: ${godzina}`,
+    `Najmocniej w górę od tamtej pory: ${zmiany.filter((z) => z.zmiana > 0).sort((a, b) => b.zmiana - a.zmiana).slice(0, 4).map((z) => `${z.nazwa} ${fmtPct(z.zmiana)}`).join(', ') || 'brak'}`,
+    `Najmocniej w dół od tamtej pory: ${zmiany.filter((z) => z.zmiana < 0).sort((a, b) => a.zmiana - b.zmiana).slice(0, 4).map((z) => `${z.nazwa} ${fmtPct(z.zmiana)}`).join(', ') || 'brak'}`,
+  );
+} else {
+  odOstatniego.push('Brak danych z poprzedniego raportu (pierwsze uruchomienie po zmianie).');
+}
+pamiec.ostatniRaport = { czas: new Date().toISOString(), ceny: Object.fromEntries(kluczowe.map((i) => [i.nazwa, i.wartosc])) };
+
 let cert = null;
 try {
   const lista = (await http('https://hole.cert.pl/domains/v2/domains.txt', false))
@@ -395,10 +649,33 @@ const tematy = [
     category: 'spolki',
     title: 'Spółki: giganci',
     instrumenty: spolki,
-    dodatkowe: ruchy,
+    dodatkowe: [...ruchy, ...sygnaly],
+    // Dla apki: szerokość rynku i rekomendacje (strona każdej spółki pokazuje swoje)
+    extra: { szerokosc, rekomendacje },
     newsy: newsySpolek,
     prompt:
-      'Duże spółki z USA i GPW (Nvidia, AMD, CD Projekt, Orlen itd.). WYJĄTEK od liczby punktów: 6-10 punktów, po jednym na spółkę wartą uwagi (największe ruchy dnia/miesiąca, duża odległość od rocznego szczytu albo ważny news). W każdym punkcie: nazwa spółki, liczby (zmiana, odległość od szczytu 52 tyg.), POWÓD ruchu z newsów z numerem źródła, a jeśli pasuje — krótka uwaga typu "może być warta dalszej analizy, bo …" albo "ostrożnie, bo …". Na końcu "Podsumowanie:".',
+      'Duże spółki z USA i GPW (Nvidia, AMD, CD Projekt, Orlen itd.). WYJĄTEK od liczby punktów: 6-10 punktów, po jednym na spółkę wartą uwagi (największe ruchy dnia/miesiąca, duża odległość od rocznego szczytu, skrajne RSI albo ważny news). W każdym punkcie: nazwa spółki, liczby (zmiana, RSI, pozycja wobec średniej 200 dni), POWÓD ruchu z newsów z numerem źródła, a jeśli pasuje — krótka uwaga typu "może być warta dalszej analizy, bo …" albo "ostrożnie, bo …". Na końcu "Podsumowanie:".',
+  },
+  {
+    category: 'makro',
+    title: 'Makro',
+    instrumenty: makro,
+    newsy: await newsy(
+      [...PL, ...US],
+      /stop[ya] procent|rpp|\bfed\b|ebc|\becb\b|inflac|cpi|pkb|gdp|obligac|rentowno|treasur|yield|rop[ay]|brent|opec|dolar|euro|frank|miedź|miedzi|recesj/i,
+    ),
+    prompt:
+      'Makro w 3-5 punktach: co mówią stopy procentowe (NBP), rentowności obligacji USA, waluty, surowce (ropa, miedź, srebro) i wskaźniki nastrojów (VIX, Fear & Greed) — i jak to wpływa na akcje, złoto i złotówkę. Konkretne liczby z TWARDYCH DANYCH. Na końcu "Podsumowanie:".',
+  },
+  {
+    category: 'kalendarz',
+    title: 'Kalendarz',
+    instrumenty: [],
+    dodatkowe: kalendarzTekst.length ? kalendarzTekst : ['Brak ważnych wydarzeń w kalendarzu na najbliższe dni.'],
+    extra: { wydarzenia },
+    newsy: [],
+    prompt:
+      'Kalendarz: wybierz 3-6 najważniejszych wydarzeń z TWARDYCH DANYCH (daty są w czasie polskim) i w 1 zdaniu wyjaśnij, dlaczego każde jest ważne dla inwestora w Polsce (np. inflacja w USA → decyzje Fed → dolar i akcje). Nazwy wskaźników przetłumacz na polski. Bez "Podsumowanie:".',
   },
   {
     category: 'krypto',
@@ -424,27 +701,46 @@ const tematy = [
 
 // Podsumowanie dnia: kluczowe liczby, największe ruchy spółek i najważniejsze newsy ze wszystkich tematów
 const pierwszy = (lista) => lista.filter((i) => !i.blad).slice(0, 1);
-const newsyDnia = tematy
-  .flatMap((t) => t.newsy.slice(0, t.category === 'spolki' ? 6 : 3))
-  .map((n, i) => ({ ...n, nr: i + 1 }));
+// Newsy dla podsumowania: najważniejsze z tematów + wszystkie rekomendacje (żeby dało się je cytować)
+const newsyDnia = [
+  ...tematy.filter((t) => t.category !== 'kalendarz').flatMap((t) => t.newsy.slice(0, t.category === 'spolki' ? 6 : 3)),
+  ...rekomendacje.filter((r) => !tematy.some((t) => t.newsy.slice(0, 6).some((n) => n.tytul === r.tytul))),
+].map((n, i) => ({ ...n, nr: i + 1 }));
+const makroSkrot = makro
+  .filter((i) => !i.blad)
+  .map((i) => `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka}${i.d30 != null ? ` (miesiąc ${fmtPct(i.d30)})` : ''}${i.opisPl ? ` — ${i.opisPl}` : ''}`);
 tematy.push({
   category: 'dzien',
   title: 'Podsumowanie dnia',
   instrumenty: [...pierwszy(zloto), ...pierwszy(gpw), ...pierwszy(usa), ...pierwszy(krypto), ...pierwszy(usdPln)],
-  dodatkowe: ruchy,
+  dodatkowe: [
+    '— RUCHY SPÓŁEK —', ...ruchy,
+    '— SYGNAŁY TECHNICZNE —', ...sygnaly,
+    '— OD OSTATNIEGO RAPORTU —', ...odOstatniego,
+    '— MAKRO —', ...makroSkrot,
+    '— KALENDARZ (czas polski) —', ...(kalendarzTekst.slice(0, 10).length ? kalendarzTekst.slice(0, 10) : ['brak ważnych wydarzeń']),
+  ],
   newsy: newsyDnia,
-  prompt: `Rozbudowane podsumowanie dnia dla inwestora indywidualnego (ok. 300-450 słów). WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie tak:
+  prompt: `Rozbudowany RAPORT DNIA dla inwestora indywidualnego (ok. 500-800 słów — może być długi, czytelnik czyta go raz, dokładnie). WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie w tej kolejności:
 Co się stało:
-Co to znaczy:
+Od ostatniego raportu:
+Co przed nami:
+Makro w pigułce:
+Sygnały techniczne:
 Spółki w ruchu:
+Rekomendacje dnia:
 Pomysły do rozważenia:
 Ryzyka:
 Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
-- "Co się stało" — najważniejsze wydarzenia dnia na rynkach (liczby + źródła).
-- "Co to znaczy" — jak te wydarzenia łączą się ze sobą (np. rentowności obligacji → złoto, dolar → spółki, wyniki → sektor).
+- "Co się stało" — najważniejsze wydarzenia na rynkach (liczby + źródła).
+- "Od ostatniego raportu" — co się zmieniło od poprzedniego raportu (dane z sekcji OD OSTATNIEGO RAPORTU); jeśli brak danych, 1 punkt z najważniejszą zmianą dnia.
+- "Co przed nami" — najważniejsze wydarzenia z KALENDARZA (dzień, godzina, dlaczego ważne; nazwy po polsku).
+- "Makro w pigułce" — stopy, rentowności, dolar, ropa, nastroje (VIX, Fear & Greed) i co z tego wynika.
+- "Sygnały techniczne" — szerokość rynku (ile spółek nad średnią 200 dni vs tydzień temu), spółki wyprzedane/wykupione (RSI), testy średniej 200 dni. Wyjaśniaj po ludzku, co znaczy dany sygnał.
 - "Spółki w ruchu" — największe wzrosty/spadki dużych spółek i ich POWODY z newsów.
-- "Pomysły do rozważenia" — 2-4 pomysły: co (spółka/instrument/sektor), dlaczego może być wart dalszej analizy teraz (konkretne liczby z danych, np. spadek od szczytu, i news ze źródłem), na co uważać. Używaj sformułowań "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk". Nie wymyślaj cen docelowych — podawaj je tylko, jeśli są w newsach, z autorem.
-- "Ryzyka" — co może pójść nie tak (makro, geopolityka, zmienność).
+- "Rekomendacje dnia" — rekomendacje analityków z newsów (kto, dla jakiej spółki, jaka ocena, cena docelowa tylko jeśli jest w newsie, z numerem źródła). Jeśli brak — napisz to.
+- "Pomysły do rozważenia" — 2-4 pomysły łączące dane: np. wyprzedana spółka (RSI) + dobry news + rekomendacja; co, dlaczego teraz (liczby + źródło), na co uważać. Sformułowania "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk".
+- "Ryzyka" — co może pójść nie tak (makro, geopolityka, zmienność, wydarzenia z kalendarza).
 Na samym końcu osobna linia: "To informacja, nie porada inwestycyjna — przed decyzją zweryfikuj sam i dopasuj do swojej sytuacji."`,
 });
 

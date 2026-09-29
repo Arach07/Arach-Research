@@ -102,6 +102,15 @@ return $('Dane i tematy').all().map((item, i) => {
         newsy: zNumerami,
         odrzucone,
         ...(temat.cert ? { cert: temat.cert } : {}),
+        // Dodatkowe dane dla apki (szerokość rynku, kalendarz, rekomendacje — też przez filtr CERT)
+        ...(temat.extra ?? {}),
+        ...(temat.extra?.rekomendacje
+          ? {
+              rekomendacje: temat.extra.rekomendacje
+                .filter((r) => !naLiscieCert(r.domena))
+                .map((r) => ({ tytul: r.tytul, link: r.link, domena: r.domena, data: r.data, spolka: r.spolka })),
+            }
+          : {}),
       },
     },
     pairedItem: { item: i },

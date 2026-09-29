@@ -1,0 +1,137 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research — makieta układu</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:#1b1a1f;color:#efe9dc;padding:28px 12px 60px}
+h1.t{text-align:center;font-size:21px;margin-bottom:4px}.lead{text-align:center;color:#9a9384;font-size:13px;margin-bottom:24px}
+.row-screens{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
+.v{display:flex;flex-direction:column;align-items:center;gap:10px;width:350px}.v h2{font-size:15px}.v p.d{font-size:12.5px;color:#9a9384;text-align:center}
+.phone{width:350px;height:720px;border-radius:42px;padding:10px;background:#000;box-shadow:0 25px 50px rgba(0,0,0,.5)}
+.screen{height:100%;border-radius:34px;overflow:hidden;padding:18px 14px;display:flex;flex-direction:column;gap:10px;--up:#7ee0a8;--down:#f08a7e;
+background:#07070a;background-image:radial-gradient(70% 35% at 50% -5%,rgba(214,168,72,.34),transparent 70%),repeating-linear-gradient(135deg,rgba(255,255,255,.022) 0 1px,transparent 1px 9px)}
+.gold{background:linear-gradient(180deg,#f7dd9c,#c9983a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tab{font-family:"JetBrains Mono",monospace}.big{font-size:24px}.small{font-size:11px}.muted{color:#9a9384}.center{text-align:center}.accent{color:#e7c276}
+.up{color:var(--up)}.down{color:var(--down)}
+.top{display:flex;justify-content:space-between;align-items:baseline}.logo{font-size:22px;font-weight:700}.h1{font-size:21px;font-weight:600}.h2{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}.h3{font-size:13px;font-weight:600;margin-bottom:6px}
+.card{border-radius:18px;border:1px solid rgba(214,168,72,.18);background:linear-gradient(180deg,#111016,#0c0b10);padding:12px}
+.hero{border-color:rgba(214,168,72,.5);position:relative;overflow:hidden;max-height:470px}
+.sec{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#9a9384;margin:9px 0 4px}
+ul{list-style:none}li{font-size:12.5px;line-height:1.45;padding-left:12px;position:relative;margin-bottom:4px}li:before{content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;border-radius:50%;background:#e7c276}
+.cite{display:inline-block;font-style:normal;font-size:9px;background:rgba(214,168,72,.16);color:#e7c276;border-radius:9px;padding:0 5px;margin-left:2px}
+.fade{position:absolute;left:0;right:0;bottom:44px;height:70px;background:linear-gradient(to top,#0f0e14,transparent)}
+.btn{position:absolute;left:12px;right:12px;bottom:10px;text-align:center;border:1px solid rgba(214,168,72,.4);border-radius:12px;padding:7px;font-size:12px;color:#e7c276;background:#0f0e14}
+.live{font-size:11px;color:#9a9384;display:flex;align-items:center;gap:5px}.dot{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(126,224,168,.2)}
+.seg{display:flex;background:rgba(255,255,255,.04);border:1px solid rgba(214,168,72,.18);border-radius:12px;padding:3px}.seg span{flex:1;text-align:center;font-size:11.5px;padding:6px 0;color:#9a9384;border-radius:9px}.seg .on{background:rgba(214,168,72,.16);color:#e7c276;font-weight:600}
+.breadth{font-size:14px;margin:4px 0}.bar{height:8px;border-radius:5px;background:rgba(240,138,126,.35);overflow:hidden;margin:4px 0}.bar div{height:100%;background:var(--up)}
+.list{padding:4px 12px}.row{padding:8px 0;border-bottom:1px solid rgba(214,168,72,.12)}.rowtop{display:grid;grid-template-columns:1fr 70px 62px;gap:8px;align-items:center}.name{font-size:13px}.chg{text-align:right;font-size:12px}
+.bdgs{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.bdg{font-size:10px;border-radius:8px;padding:1px 6px;white-space:nowrap}.bdg.g{background:rgba(126,224,168,.12);color:var(--up)}.bdg.r{background:rgba(240,138,126,.12);color:var(--down)}.bdg.b{background:rgba(120,170,255,.14);color:#9cc2ff}.bdg.o{background:rgba(255,170,90,.15);color:#ffb870}.bdg.n{background:rgba(255,255,255,.06);color:#9a9384}
+.star{font-size:11px}.more{text-align:center;font-size:12px;color:#e7c276;padding:8px 0}
+.range{display:flex;justify-content:space-between;margin-top:8px}.rbar{position:relative;height:6px;border-radius:4px;background:linear-gradient(90deg,rgba(240,138,126,.5),rgba(255,255,255,.1),rgba(126,224,168,.5));margin-top:4px}.rbar span{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:#e7c276;border:2px solid #07070a;transform:translate(-50%,-50%)}
+.tech{margin-bottom:8px}.tech p{font-size:11.5px;line-height:1.4;color:#d6d0c2;margin-top:3px}.rec,.news{font-size:12px;line-height:1.4;padding:4px 0;border-bottom:1px solid rgba(214,168,72,.1)}
+.grp{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#9a9384;margin-top:2px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tile{border-radius:14px;border:1px solid rgba(214,168,72,.18);background:linear-gradient(180deg,#111016,#0c0b10);padding:8px;display:flex;flex-direction:column;gap:2px}.tile .tab{font-size:15px}
+</style></head><body>
+<h1 class="t">Research: makieta nowego układu</h1>
+<p class="lead">Prawdziwe dane z 29.09.2026, 16:07:06 · tekst raportu jest przykładowy (napisze go AI) · rekomendacja na ekranie 3 to tylko przykład układu</p>
+<div class="row-screens"><div class="v"><h2>1 · Dziś: raport</h2><div class="phone"><div class="screen">
+<div class="top"><div class="logo gold">Research</div><div class="muted small">wt. 29.09 · 14:00</div></div>
+<div class="card hero">
+  <div class="h2 accent">🧠 Raport dnia</div>
+  <div class="sec">📰 Co się stało</div>
+  <ul><li>Ropa Brent tanieje o 8,6% do 96,21 $ — rynek odreagowuje wcześniejsze obawy o podaż <i class="cite">3</i></li>
+  <li>Złoto wg NBP 512,64 zł/g, -2,7% w miesiąc; presję wciąż wywiera rentowność 10-letnich obligacji USA (5,26%) <i class="cite">1</i></li></ul>
+  <div class="sec">🔄 Od rana</div>
+  <ul><li>WIG20 −1,0%, Orlen -2,6% w ślad za ropą; ASML +2,4%</li></ul>
+  <div class="sec">📅 Co przed nami</div>
+  <ul><li>Śr.: dane o inflacji w strefie euro · Czw.: decyzja RPP · Pt.: raport z rynku pracy USA</li></ul>
+  <div class="sec">🌍 Makro w pigułce</div>
+  <ul><li>Dolar 3,8537 zł (+3,3% w miesiąc), VIX 16,0 — spokojnie; krypto: 73/100 „chciwość”</li></ul>
+  <div class="sec">📊 Sygnały techniczne</div>
+  <ul><li>17 z 20 spółek nad trendem (tydzień temu 18) — rynek wciąż zdrowy</li>
+  <li>Novo Nordisk: RSI 29 (wyprzedany), -40,3% od szczytu · LPP: RSI 75 (wykupiony)</li></ul>
+  <div class="fade"></div>
+  <div class="btn">Rozwiń, żeby przeczytać całość ▾</div>
+</div>
+<div class="muted small center">dalej w raporcie: 🏢 Spółki w ruchu · 📈 Rekomendacje dnia · 💡 Pomysły · ⚠️ Ryzyka</div></div></div><p class="d">Czytasz raz: tekst i wnioski. Liczby wplecione w zdania, rozwijany.</p></div><div class="v"><h2>2 · Rynki → Spółki</h2><div class="phone"><div class="screen">
+<div class="top"><div class="h1">Rynki</div><div class="live"><span class="dot"></span> na żywo</div></div>
+<div class="seg"><span>Przegląd</span><span class="on">Spółki</span><span>Makro</span><span>Kalendarz</span></div>
+<div class="card">
+  <div class="small muted">📊 Nastrój wśród 20 spółek</div>
+  <div class="breadth"><b class="up">17 nad trendem</b> · <b class="down">3 pod trendem</b></div>
+  <div class="bar"><div style="width:85%"></div></div>
+  <div class="small muted">85% · tydzień temu 90%</div>
+</div>
+<div class="card list">
+<div class="row">
+  <div class="rowtop"><div><div class="name">ASML</div><div class="tab gold">1815 $</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,4.0 10.3,8.3 20.7,8.4 31.0,7.3 41.4,9.2 51.7,8.9 62.1,8.8 72.4,9.7 82.8,12.9 93.1,12.9 103.4,15.5 113.8,14.1 124.1,17.1 134.5,11.3 144.8,7.2 155.2,10.1 165.5,13.6 175.9,12.7 186.2,23.0 196.6,21.6 206.9,20.7 217.2,18.4 227.6,14.3 237.9,11.6 248.3,8.6 258.6,8.9 269.0,10.7 279.3,8.9 289.7,6.6 300.0,3.0"/></svg></div><div class="chg"><span class="up">▲ 2,4%</span></div></div>
+  <div class="bdgs"><span class="bdg g">🟢 +18,5% nad trendem</span><span class="bdg n">RSI 62</span></div>
+</div>
+<div class="row">
+  <div class="rowtop"><div><div class="name">AMD</div><div class="tab gold">618,26 $</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,19.8 10.3,21.8 20.7,21.5 31.0,21.0 41.4,22.9 51.7,20.4 62.1,20.2 72.4,20.6 82.8,21.9 93.1,21.3 103.4,22.6 113.8,22.9 124.1,23.0 134.5,20.5 144.8,17.3 155.2,15.6 165.5,17.6 175.9,16.1 186.2,18.7 196.6,17.5 206.9,16.5 217.2,12.8 227.6,11.1 237.9,4.7 248.3,3.8 258.6,4.8 269.0,3.2 279.3,3.0 289.7,5.6 300.0,4.4"/></svg></div><div class="chg"><span class="up">▲ 1,7%</span></div></div>
+  <div class="bdgs"><span class="bdg g">🟢 +67,7% nad trendem</span><span class="bdg n">RSI 67</span></div>
+</div>
+<div class="row">
+  <div class="rowtop"><div><div class="name">Dino Polska</div><div class="tab gold">35,14 zł</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,22.2 10.3,23.0 20.7,13.2 31.0,12.1 41.4,7.7 51.7,8.0 62.1,10.6 72.4,10.1 82.8,8.5 93.1,7.6 103.4,10.1 113.8,9.0 124.1,8.5 134.5,7.4 144.8,3.0 155.2,9.2 165.5,12.3 175.9,10.8 186.2,12.3 196.6,10.4 206.9,9.2 217.2,7.8 227.6,9.4 237.9,10.4 248.3,8.5 258.6,10.4 269.0,13.8 279.3,14.5 289.7,13.9 300.0,11.8"/></svg></div><div class="chg"><span class="up">▲ 1,6%</span></div></div>
+  <div class="bdgs"><span class="bdg g">🟢 +0,6% nad trendem</span><span class="bdg n">RSI 52</span></div>
+</div>
+<div class="row">
+  <div class="rowtop"><div><div class="name">Meta</div><div class="tab gold">721,16 $</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,23.0 10.3,22.8 20.7,22.8 31.0,22.5 41.4,21.7 51.7,20.7 62.1,20.2 72.4,20.7 82.8,20.1 93.1,20.5 103.4,20.0 113.8,18.8 124.1,17.3 134.5,16.7 144.8,17.0 155.2,13.6 165.5,14.4 175.9,14.1 186.2,12.6 196.6,12.2 206.9,11.9 217.2,11.1 227.6,12.6 237.9,6.1 248.3,6.5 258.6,5.9 269.0,3.0 279.3,5.2 289.7,8.3 300.0,7.8"/></svg></div><div class="chg"><span class="up">▲ 0,8%</span></div></div>
+  <div class="bdgs"><span class="bdg g">🟢 +15,0% nad trendem</span><span class="bdg n">RSI 62</span></div>
+</div>
+<div class="row">
+  <div class="rowtop"><div><div class="name">Allegro</div><div class="tab gold">50,24 zł</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,19.9 10.3,21.1 20.7,19.6 31.0,20.9 41.4,20.3 51.7,20.4 62.1,23.0 72.4,18.8 82.8,17.9 93.1,18.6 103.4,20.7 113.8,19.6 124.1,18.0 134.5,16.5 144.8,17.1 155.2,19.8 165.5,19.9 175.9,20.1 186.2,17.3 196.6,16.3 206.9,19.4 217.2,5.6 227.6,4.4 237.9,5.6 248.3,4.9 258.6,8.2 269.0,6.1 279.3,5.2 289.7,4.2 300.0,3.0"/></svg></div><div class="chg"><span class="up">▲ 0,8%</span></div></div>
+  <div class="bdgs"><span class="bdg g">🟢 +42,3% nad trendem</span><span class="bdg n">RSI 69</span></div>
+</div>
+<div class="row">
+  <div class="rowtop"><div><div class="name">CD Projekt</div><div class="tab gold">246,30 zł</div></div>
+  <div class="spk"><svg viewBox="0 0 300 26" preserveAspectRatio="none" style="width:100%;height:26px;display:block"><polyline fill="none" stroke="var(--down)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,4.6 10.3,5.3 20.7,3.0 31.0,4.1 41.4,14.2 51.7,17.7 62.1,20.6 72.4,18.8 82.8,20.3 93.1,20.3 103.4,22.6 113.8,21.5 124.1,22.0 134.5,18.7 144.8,16.7 155.2,21.8 165.5,23.0 175.9,19.6 186.2,18.2 196.6,19.2 206.9,17.4 217.2,16.7 227.6,18.9 237.9,10.6 248.3,11.0 258.6,9.7 269.0,12.1 279.3,13.0 289.7,12.6 300.0,11.8"/></svg></div><div class="chg"><span class="up">▲ 0,4%</span></div></div>
+  <div class="bdgs"><span class="bdg r">🔴 -0,0% pod trendem</span><span class="bdg n">RSI 55</span></div>
+</div><div class="more">+ 14 spółek ›</div></div></div></div><p class="d">Nastrój rynku na górze, przy każdej spółce plakietki z liczbami.</p></div><div class="v"><h2>3 · Strona spółki</h2><div class="phone"><div class="screen">
+<div class="muted small">‹ Spółki</div>
+<div class="h1">Novo Nordisk <span class="muted small">NVO</span></div>
+<div class="card">
+  <div class="tab gold big">38,19 $</div>
+  <div><span class="down">▼ 1,4%</span> <span class="muted small">dziś</span> · <span class="down">▼ 16,3%</span> <span class="muted small">miesiąc</span></div>
+  <svg viewBox="0 0 300 56" preserveAspectRatio="none" style="width:100%;height:56px;display:block"><polyline fill="none" stroke="var(--down)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,17.1 10.3,13.4 20.7,15.0 31.0,12.2 41.4,11.3 51.7,3.0 62.1,10.0 72.4,14.4 82.8,17.5 93.1,18.9 103.4,19.9 113.8,12.0 124.1,8.5 134.5,12.8 144.8,19.7 155.2,22.5 165.5,25.2 175.9,29.6 186.2,27.8 196.6,32.2 206.9,36.1 217.2,29.1 227.6,28.8 237.9,45.2 248.3,47.1 258.6,53.0 269.0,50.9 279.3,50.0 289.7,50.4 300.0,52.9"/></svg>
+  <div class="range"><span class="muted small">dołek 52 tyg. 35,29</span><span class="muted small">szczyt 63,98</span></div>
+  <div class="rbar"><span style="left:10.090621202670802%"></span></div>
+</div>
+<div class="card">
+  <div class="h3">📊 Analiza techniczna</div>
+  <div class="tech"><span class="bdg b">🔵 RSI 29</span><p>Akcje <b>mocno spadły w krótkim czasie</b> — rynek może być nimi „zmęczony”. Wyprzedanie bywa okazją, ale nie gwarantuje odbicia.</p></div>
+  <div class="tech"><span class="bdg r">🔴 -16,7% pod trendem</span><p>Kurs jest <b>poniżej średniej z 200 dni</b> (45,84 $) — długoterminowy trend jest spadkowy.</p></div>
+  <div class="tech"><span class="bdg r">-40,3% od szczytu</span><p>Najniżej od roku w relacji do szczytu — sprawdź, czy powód spadku jest przejściowy.</p></div>
+</div>
+<div class="card">
+  <div class="h3">📈 Rekomendacje <span class="muted small">(przykład układu)</span></div>
+  <div class="rec"><b>Dom maklerski X</b> · „Trzymaj” · cena docelowa 45 $ <span class="muted small">· 2 dni temu</span></div>
+</div>
+<div class="card">
+  <div class="h3">📰 Newsy</div>
+  <div class="news">Novo Nordisk zawiódł rynek i szuka ratunku w Chinach <span class="muted small">· fxmag.pl</span></div>
+  <div class="news">Akcje Hengrui rosną po umowie Novo Nordisk wartej 2,6 mld $ <span class="muted small">· pl.investing.com</span></div>
+</div></div></div><p class="d">Po kliknięciu: wykres, roczny zakres, wskaźniki z wyjaśnieniem po ludzku.</p></div><div class="v"><h2>4 · Rynki → Makro</h2><div class="phone"><div class="screen">
+<div class="top"><div class="h1">Rynki</div><div class="live"><span class="dot"></span> na żywo</div></div>
+<div class="seg"><span>Przegląd</span><span>Spółki</span><span class="on">Makro</span><span>Kalendarz</span></div>
+<div class="grp">🏦 Stopy i obligacje</div>
+<div class="grid">
+<div class="tile"><div class="small muted">USA 10 lat</div><div class="tab gold">5,26%</div><div class="small"><span class="up">▲ 11,4%</span> <span class="muted">30d</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,17.3 10.3,18.6 20.7,17.5 31.0,16.4 41.4,17.3 51.7,19.0 62.1,18.4 72.4,18.1 82.8,16.9 93.1,15.9 103.4,14.9 113.8,14.9 124.1,15.8 134.5,15.2 144.8,14.7 155.2,13.9 165.5,11.1 175.9,10.3 186.2,10.7 196.6,9.8 206.9,9.5 217.2,11.0 227.6,9.7 237.9,10.6 248.3,10.5 258.6,6.7 269.0,5.5 279.3,4.9 289.7,3.4 300.0,3.0"/></svg><div class="small muted">wyżej = gorzej dla złota i akcji</div></div>
+<div class="tile"><div class="small muted">Stopa NBP</div><div class="tab gold">—</div><div class="small"><span class="muted">wkrótce</span></div><div class="small muted">decyzja RPP w czwartek</div></div></div>
+<div class="grp">💱 Waluty (NBP)</div>
+<div class="grid">
+<div class="tile"><div class="small muted">USD/PLN</div><div class="tab gold">3,8537</div><div class="small"><span class="up">▲ 3,3%</span> <span class="muted">30d</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,14.7 10.3,18.5 20.7,19.0 31.0,17.8 41.4,18.5 51.7,18.9 62.1,16.1 72.4,15.6 82.8,14.6 93.1,14.1 103.4,13.6 113.8,15.4 124.1,16.2 134.5,16.7 144.8,16.0 155.2,16.5 165.5,16.6 175.9,15.0 186.2,11.9 196.6,11.3 206.9,11.6 217.2,8.0 227.6,8.3 237.9,8.9 248.3,8.9 258.6,6.7 269.0,3.0 279.3,4.5 289.7,3.9 300.0,3.3"/></svg></div>
+<div class="tile"><div class="small muted">EUR/PLN</div><div class="tab gold">4,3728</div><div class="small"><span class="up">▲ 1,1%</span> <span class="muted">30d</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,14.4 10.3,16.3 20.7,17.0 31.0,17.0 41.4,18.4 51.7,19.0 62.1,14.3 72.4,13.3 82.8,14.5 93.1,13.3 103.4,13.6 113.8,15.4 124.1,16.0 134.5,17.4 144.8,16.5 155.2,16.2 165.5,16.0 175.9,15.1 186.2,12.2 196.6,11.2 206.9,11.4 217.2,7.8 227.6,7.8 237.9,9.4 248.3,10.9 258.6,8.6 269.0,3.0 279.3,5.7 289.7,5.4 300.0,6.1"/></svg></div></div>
+<div class="grp">🛢️ Surowce</div>
+<div class="grid">
+<div class="tile"><div class="small muted">Ropa Brent</div><div class="tab gold">96,21 $</div><div class="small"><span class="down">▼ 8,6%</span> <span class="muted">dziś</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,16.6 10.3,16.1 20.7,14.5 31.0,14.0 41.4,15.7 51.7,18.4 62.1,19.0 72.4,17.6 82.8,17.9 93.1,17.0 103.4,13.8 113.8,13.0 124.1,13.1 134.5,12.5 144.8,11.3 155.2,8.8 165.5,3.9 175.9,6.2 186.2,5.3 196.6,3.0 206.9,5.2 217.2,6.0 227.6,6.7 237.9,9.4 248.3,10.3 258.6,7.3 269.0,4.6 279.3,6.4 289.7,5.7 300.0,12.6"/></svg></div>
+<div class="tile"><div class="small muted">Miedź</div><div class="tab gold">6,62 $</div><div class="small"><span class="up">▲ 0,9%</span> <span class="muted">30d</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,13.8 10.3,13.7 20.7,14.6 31.0,10.6 41.4,9.9 51.7,6.2 62.1,10.1 72.4,10.3 82.8,11.2 93.1,10.1 103.4,13.0 113.8,13.2 124.1,10.7 134.5,10.0 144.8,5.2 155.2,3.0 165.5,14.4 175.9,14.3 186.2,19.0 196.6,17.7 206.9,15.6 217.2,10.3 227.6,9.4 237.9,7.0 248.3,4.5 258.6,7.2 269.0,5.9 279.3,6.6 289.7,11.0 300.0,9.3"/></svg><div class="small muted">→ KGHM</div></div></div>
+<div class="grp">😨 Nastroje</div>
+<div class="grid">
+<div class="tile"><div class="small muted">VIX (strach, akcje)</div><div class="tab gold">16,0</div><div class="small"><span class="bdg g">spokój</span></div><svg viewBox="0 0 300 22" preserveAspectRatio="none" style="width:100%;height:22px;display:block"><polyline fill="none" stroke="var(--up)" stroke-width="2" vector-effect="non-scaling-stroke" points="0.0,16.0 10.3,11.1 20.7,14.9 31.0,11.8 41.4,13.5 51.7,14.6 62.1,17.7 72.4,18.0 82.8,15.9 93.1,9.6 103.4,14.6 113.8,18.5 124.1,17.6 134.5,14.2 144.8,12.3 155.2,9.1 165.5,3.0 175.9,11.8 186.2,6.3 196.6,5.8 206.9,3.6 217.2,13.6 227.6,16.4 237.9,16.1 248.3,19.0 258.6,14.7 269.0,12.6 279.3,16.1 289.7,10.8 300.0,11.3"/></svg><div class="small muted">poniżej 20 = spokojnie</div></div>
+<div class="tile"><div class="small muted">Fear & Greed (krypto)</div><div class="tab gold">73/100</div><div class="small"><span class="bdg o">chciwość</span></div><div class="small muted">tydzień temu 78</div></div></div></div></div><p class="d">Kafelki pogrupowane: stopy, waluty, surowce, nastroje.</p></div></div>
+</body></html>
