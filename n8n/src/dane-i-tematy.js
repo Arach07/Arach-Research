@@ -36,7 +36,31 @@ function instrument(nazwa, jednostka, seria, { zrodlo, cyfry = 2, d1, d7, d30 } 
 const opis = (i) =>
   i.blad
     ? `${i.nazwa}: brak danych (${i.blad})`
-    : `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka} | dzień ${fmtPct(i.d1)} | tydzień ${fmtPct(i.d7)} | miesiąc ${fmtPct(i.d30)}`;
+    : `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka} | dzień ${fmtPct(i.d1)} | tydzień ${fmtPct(i.d7)} | miesiąc ${fmtPct(i.d30)}` +
+      (i.odSzczytu != null
+        ? ` | od szczytu 52 tyg.: ${fmtPct(i.odSzczytu)} | od dołka 52 tyg.: ${fmtPct(i.odDolka)}`
+        : '');
+
+// Spółka: rok notowań z Yahoo — kurs, zmiany, wykres 30 sesji i odległość od rocznego szczytu/dołka
+async function spolka(s) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s.symbol)}?range=1y&interval=1d`;
+  const r = (await http(url)).chart.result[0];
+  const closes = r.indicators.quote[0].close.filter((x) => x != null);
+  const cena = r.meta.regularMarketPrice ?? closes[closes.length - 1];
+  const seria = [...closes.slice(0, -1), cena];
+  const max52 = Math.max(...seria);
+  const min52 = Math.min(...seria);
+  return {
+    ...instrument(s.nazwa, r.meta.currency === 'USD' ? 'USD' : 'zł', seria, {
+      zrodlo: `https://finance.yahoo.com/quote/${encodeURIComponent(s.symbol)}`,
+    }),
+    symbol: s.symbol,
+    max52,
+    min52,
+    odSzczytu: pct(cena, max52),
+    odDolka: pct(cena, min52),
+  };
+}
 
 // Błąd jednego źródła nie wywala całego raportu
 async function bezpiecznie(nazwa, fn) {
@@ -151,8 +175,72 @@ async function newsy(klucze, filtr, godzin = 48, limit = 12, naPortal = 3) {
     .map((n, i) => ({ ...n, nr: i + 1, data: n.data?.toISOString() ?? null }));
 }
 
+// Newsy o konkretnej spółce z Google News (zbiera artykuły z wielu portali).
+// Domena = portal źródłowy (z <source url>), więc filtr CERT działa tak jak dla RSS.
+async function newsyOSpolce(s, naSpolke = 2) {
+  try {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(`${s.zapytanie} when:3d`)}&hl=pl&gl=PL&ceid=PL:pl`;
+    const xml = await http(url, false);
+    return xml
+      .split(/<item[\s>]/i)
+      .slice(1)
+      .map((it) => {
+        const zrodloUrl = it.match(/<source url="([^"]+)"/)?.[1] ?? '';
+        const zrodloNazwa = czysc(tag(it, 'source') ?? '');
+        const tytulPelny = czysc(tag(it, 'title'));
+        const data = new Date(czysc(tag(it, 'pubDate') ?? ''));
+        let domena = 'news.google.com';
+        try {
+          domena = new URL(zrodloUrl).hostname.replace(/^www\./, '');
+        } catch {}
+        return {
+          // Google dopisuje " - Nazwa portalu" na końcu tytułu
+          tytul: zrodloNazwa && tytulPelny.endsWith(` - ${zrodloNazwa}`)
+            ? tytulPelny.slice(0, -(zrodloNazwa.length + 3))
+            : tytulPelny,
+          opis: s.nazwa,
+          link: czysc(tag(it, 'link')),
+          data: Number.isNaN(data.getTime()) ? null : data,
+          domena,
+          spolka: s.nazwa,
+        };
+      })
+      .filter((n) => n.tytul && /^https?:\/\//.test(n.link))
+      // Google zwraca też luźno powiązane artykuły — zostawiamy tylko te, które wymieniają spółkę w tytule
+      .filter((n) => !s.filtr || s.filtr.test(n.tytul))
+      // Sponsorowane drużyny (np. Orlen Wisła Płock) — wyniki meczów to nie newsy giełdowe
+      .filter((n) => !/\b\d{1,2}\s?:\s?\d{1,2}\b|mecz|ligi|liga|piłkar|siatkar|szczypiorn|kibic/i.test(n.tytul))
+      .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0))
+      .slice(0, naSpolke);
+  } catch {
+    return [];
+  }
+}
+
 const PL = ['bankier', 'money', 'parkiet', 'pb', 'insider', 'comparic'];
 const US = ['cnbc', 'marketwatch', 'yahoo'];
+
+// Duże spółki śledzone w temacie "Spółki: giganci". Nowa spółka = nowa linijka.
+// zapytanie = fraza do wyszukania newsów w Google News; filtr = tytuł newsa musi wymieniać spółkę.
+// UWAGA: nazwy muszą być takie same jak w apce (web/src/lib/quotes.ts, SPOLKI) — tam są kursy na żywo.
+const SPOLKI = [
+  { symbol: 'NVDA', nazwa: 'Nvidia', zapytanie: 'Nvidia akcje', filtr: /nvidia/i },
+  { symbol: 'AMD', nazwa: 'AMD', zapytanie: 'AMD akcje', filtr: /\bamd\b/i },
+  { symbol: 'AAPL', nazwa: 'Apple', zapytanie: 'Apple akcje', filtr: /apple/i },
+  { symbol: 'MSFT', nazwa: 'Microsoft', zapytanie: 'Microsoft akcje', filtr: /microsoft/i },
+  { symbol: 'GOOGL', nazwa: 'Alphabet (Google)', zapytanie: 'Alphabet Google akcje', filtr: /alphabet|google/i },
+  { symbol: 'AMZN', nazwa: 'Amazon', zapytanie: 'Amazon akcje', filtr: /amazon/i },
+  { symbol: 'META', nazwa: 'Meta', zapytanie: 'Meta Platforms akcje', filtr: /\bmeta\b|facebook/i },
+  { symbol: 'TSLA', nazwa: 'Tesla', zapytanie: 'Tesla akcje', filtr: /tesl/i },
+  { symbol: 'CDR.WA', nazwa: 'CD Projekt', zapytanie: 'CD Projekt akcje', filtr: /cd ?projekt|cdpr|wiedźmin|cyberpunk/i },
+  { symbol: 'PKO.WA', nazwa: 'PKO BP', zapytanie: 'PKO BP akcje', filtr: /\bpko\b/i },
+  { symbol: 'PKN.WA', nazwa: 'Orlen', zapytanie: 'Orlen akcje', filtr: /orlen/i },
+  { symbol: 'KGH.WA', nazwa: 'KGHM', zapytanie: 'KGHM akcje', filtr: /kghm/i },
+  { symbol: 'PZU.WA', nazwa: 'PZU', zapytanie: 'PZU akcje', filtr: /\bpzu\b/i },
+  { symbol: 'LPP.WA', nazwa: 'LPP', zapytanie: 'LPP akcje', filtr: /\blpp\b/i },
+  { symbol: 'DNP.WA', nazwa: 'Dino Polska', zapytanie: 'Dino Polska akcje', filtr: /\bdino\b/i },
+  { symbol: 'ALE.WA', nazwa: 'Allegro', zapytanie: 'Allegro akcje', filtr: /allegro/i },
+];
 
 // ---------- Twarde dane ----------
 
@@ -201,6 +289,28 @@ const krypto = await bezpiecznie('CoinGecko', async () => {
     });
   });
 });
+
+// Spółki: kursy z rocznej historii + po 2 najnowsze newsy o każdej z Google News (równolegle)
+const spolki = await Promise.all(
+  SPOLKI.map((s) => bezpiecznie(s.nazwa, async () => [await spolka(s)]).then((x) => x[0])),
+);
+const widzianeSpolki = new Set();
+const newsySpolek = (await Promise.all(SPOLKI.map((s) => newsyOSpolce(s))))
+  .flat()
+  .filter((n) => !widzianeSpolki.has(n.tytul) && widzianeSpolki.add(n.tytul))
+  .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0))
+  .slice(0, 28)
+  .map((n, i) => ({ ...n, nr: i + 1, data: n.data?.toISOString() ?? null }));
+
+// Największe ruchy dnia i miesiąca wśród spółek — podpowiedź dla AI, gdzie szukać tematów
+const zDanymi = spolki.filter((s) => !s.blad);
+const poZmianie = (klucz) => [...zDanymi].filter((s) => s[klucz] != null).sort((a, b) => a[klucz] - b[klucz]);
+const ruchy = [
+  `Najmocniej w dół (dzień): ${poZmianie('d1').slice(0, 3).map((s) => `${s.nazwa} ${fmtPct(s.d1)}`).join(', ')}`,
+  `Najmocniej w górę (dzień): ${poZmianie('d1').slice(-3).reverse().map((s) => `${s.nazwa} ${fmtPct(s.d1)}`).join(', ')}`,
+  `Najdalej od rocznego szczytu: ${poZmianie('odSzczytu').slice(0, 3).map((s) => `${s.nazwa} ${fmtPct(s.odSzczytu)}`).join(', ')}`,
+  `Najmocniej w dół (miesiąc): ${poZmianie('d30').slice(0, 3).map((s) => `${s.nazwa} ${fmtPct(s.d30)}`).join(', ')}`,
+];
 
 let cert = null;
 try {
@@ -258,6 +368,15 @@ const tematy = [
     prompt: 'Rynek akcji w USA: najważniejsze wydarzenia (Fed, dane makro, wyniki dużych spółek), nastroje i prognozy analityków.',
   },
   {
+    category: 'spolki',
+    title: 'Spółki: giganci',
+    instrumenty: spolki,
+    dodatkowe: ruchy,
+    newsy: newsySpolek,
+    prompt:
+      'Duże spółki z USA i GPW (Nvidia, AMD, CD Projekt, Orlen itd.). WYJĄTEK od liczby punktów: 6-10 punktów, po jednym na spółkę wartą uwagi (największe ruchy dnia/miesiąca, duża odległość od rocznego szczytu albo ważny news). W każdym punkcie: nazwa spółki, liczby (zmiana, odległość od szczytu 52 tyg.), POWÓD ruchu z newsów z numerem źródła, a jeśli pasuje — krótka uwaga typu "może być warta dalszej analizy, bo …" albo "ostrożnie, bo …". Na końcu "Podsumowanie:".',
+  },
+  {
     category: 'krypto',
     title: 'Krypto',
     instrumenty: krypto,
@@ -279,18 +398,30 @@ const tematy = [
   },
 ];
 
-// Podsumowanie dnia: kluczowe liczby + po 2 najnowsze newsy z każdego tematu
+// Podsumowanie dnia: kluczowe liczby, największe ruchy spółek i najważniejsze newsy ze wszystkich tematów
 const pierwszy = (lista) => lista.filter((i) => !i.blad).slice(0, 1);
 const newsyDnia = tematy
-  .flatMap((t) => t.newsy.slice(0, 2))
+  .flatMap((t) => t.newsy.slice(0, t.category === 'spolki' ? 6 : 3))
   .map((n, i) => ({ ...n, nr: i + 1 }));
 tematy.push({
   category: 'dzien',
   title: 'Podsumowanie dnia',
   instrumenty: [...pierwszy(zloto), ...pierwszy(gpw), ...pierwszy(usa), ...pierwszy(krypto), ...pierwszy(usdPln)],
+  dodatkowe: ruchy,
   newsy: newsyDnia,
-  prompt:
-    'Podsumowanie dnia na rynkach. WYJĄTEK od zasad o punktach: napisz tylko 2-3 krótkie zdania ciągłym tekstem, bez myślników i bez "Podsumowanie:", z numerami źródeł. Najważniejsze najpierw.',
+  prompt: `Rozbudowane podsumowanie dnia dla inwestora indywidualnego (ok. 300-450 słów). WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie tak:
+Co się stało:
+Co to znaczy:
+Spółki w ruchu:
+Pomysły do rozważenia:
+Ryzyka:
+Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
+- "Co się stało" — najważniejsze wydarzenia dnia na rynkach (liczby + źródła).
+- "Co to znaczy" — jak te wydarzenia łączą się ze sobą (np. rentowności obligacji → złoto, dolar → spółki, wyniki → sektor).
+- "Spółki w ruchu" — największe wzrosty/spadki dużych spółek i ich POWODY z newsów.
+- "Pomysły do rozważenia" — 2-4 pomysły: co (spółka/instrument/sektor), dlaczego może być wart dalszej analizy teraz (konkretne liczby z danych, np. spadek od szczytu, i news ze źródłem), na co uważać. Używaj sformułowań "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk". Nie wymyślaj cen docelowych — podawaj je tylko, jeśli są w newsach, z autorem.
+- "Ryzyka" — co może pójść nie tak (makro, geopolityka, zmienność).
+Na samym końcu osobna linia: "To informacja, nie porada inwestycyjna — przed decyzją zweryfikuj sam i dopasuj do swojej sytuacji."`,
 });
 
 const dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });

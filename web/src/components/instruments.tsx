@@ -91,6 +91,37 @@ export function InstrumentPanel({ instrument: base, live = false }: { instrument
           </div>
         ))}
       </div>
+      {instrument.max52 != null && instrument.min52 != null && instrument.wartosc != null && (
+        <YearRange instrument={instrument} />
+      )}
+    </div>
+  );
+}
+
+// Gdzie jest cena w rocznym zakresie: dołek ── ● ── szczyt
+function YearRange({ instrument }: { instrument: Instrument }) {
+  const { min52 = 0, max52 = 0, wartosc = 0 } = instrument;
+  const pos = max52 > min52 ? ((wartosc - min52) / (max52 - min52)) * 100 : 50;
+  const fmt = (v: number) => formatNumber(v, instrument.cyfry ?? 2);
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex justify-between text-[10px] uppercase tracking-wide text-muted">
+        <span>dołek 52 tyg.</span>
+        <span>
+          od szczytu <Change value={instrument.odSzczytu ?? null} className="font-semibold" />
+        </span>
+        <span>szczyt 52 tyg.</span>
+      </div>
+      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-down/50 via-white/10 to-up/50">
+        <span
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-accent"
+          style={{ left: `${Math.min(100, Math.max(0, pos))}%` }}
+        />
+      </div>
+      <div className="tabular mt-1 flex justify-between text-[11px] text-muted">
+        <span>{fmt(min52)}</span>
+        <span>{fmt(max52)}</span>
+      </div>
     </div>
   );
 }
@@ -110,7 +141,11 @@ export function MarketRow({ instrument: base }: { instrument: Instrument }) {
       <div>{i.seria && i.seria.length > 1 && <Sparkline values={i.seria} height={28} />}</div>
       <div className="text-right text-xs">
         <Change value={i.d1 ?? null} className="block font-semibold" />
-        <Change value={i.d30 ?? null} label="30d" className="block text-[11px]" />
+        {i.odSzczytu != null ? (
+          <Change value={i.odSzczytu} label="od szczytu" className="block text-[11px]" />
+        ) : (
+          <Change value={i.d30 ?? null} label="30d" className="block text-[11px]" />
+        )}
       </div>
     </li>
   );

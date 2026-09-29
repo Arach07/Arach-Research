@@ -27,10 +27,10 @@ function instrument(
   };
 }
 
-async function getJson<T>(url: string): Promise<T> {
+async function getJson<T>(url: string, revalidate = REVALIDATE_SECONDS): Promise<T> {
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (research-app)" },
-    next: { revalidate: REVALIDATE_SECONDS },
+    next: { revalidate },
     // Wolne źródło nie może blokować całej strony — po 4 s bierzemy dane z raportu
     signal: AbortSignal.timeout(4000),
   });
@@ -67,6 +67,39 @@ async function yahoo(symbol: string, nazwa: string, jednostka: string): Promise<
     d7: null,
     d30: null,
   });
+}
+
+// Duże spółki — te same co w n8n (n8n/src/dane-i-tematy.js, SPOLKI); nazwy muszą się zgadzać.
+const SPOLKI = [
+  ["NVDA", "Nvidia"], ["AMD", "AMD"], ["AAPL", "Apple"], ["MSFT", "Microsoft"],
+  ["GOOGL", "Alphabet (Google)"], ["AMZN", "Amazon"], ["META", "Meta"], ["TSLA", "Tesla"],
+  ["CDR.WA", "CD Projekt"], ["PKO.WA", "PKO BP"], ["PKN.WA", "Orlen"], ["KGH.WA", "KGHM"],
+  ["PZU.WA", "PZU"], ["LPP.WA", "LPP"], ["DNP.WA", "Dino Polska"], ["ALE.WA", "Allegro"],
+] as const;
+
+// Spółka: rok notowań (wykres 30 sesji + odległość od rocznego szczytu/dołka). 16 spółek,
+// więc odświeżamy najwyżej co minutę, żeby nie zasypywać Yahoo zapytaniami.
+async function company(symbol: string, nazwa: string): Promise<Instrument> {
+  const data = await getJson<YahooChart & { chart: { result: { meta: { currency?: string } }[] } }>(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`,
+    60,
+  );
+  const r = data.chart.result[0];
+  const closes = r.indicators.quote[0].close.filter((x): x is number => x != null);
+  const price = r.meta.regularMarketPrice ?? closes[closes.length - 1];
+  const seria = [...closes.slice(0, -1), price];
+  const max52 = Math.max(...seria);
+  const min52 = Math.min(...seria);
+  return {
+    ...instrument(nazwa, r.meta.currency === "USD" ? "USD" : "zł", seria, {
+      zrodlo: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`,
+    }),
+    symbol,
+    max52,
+    min52,
+    odSzczytu: pct(price, max52),
+    odDolka: pct(price, min52),
+  };
 }
 
 async function nbpGold(): Promise<Instrument> {
@@ -130,6 +163,7 @@ export type LiveQuotes = {
 };
 
 export async function liveQuotes(): Promise<LiveQuotes> {
+  const companiesPromise = Promise.all(SPOLKI.map(([symbol, nazwa]) => safe(() => company(symbol, nazwa))));
   const [gold, goldUsd, usd, wig20, wig, spx, nasdaq, dow, coins] = await Promise.all([
     safe(nbpGold),
     safe(() => yahoo("GC=F", "Złoto (1 uncja)", "USD")),
@@ -143,6 +177,7 @@ export async function liveQuotes(): Promise<LiveQuotes> {
   ]);
 
   const only = (...items: (Instrument | null)[]) => items.filter((i): i is Instrument => i !== null);
+  const companies = only(...(await companiesPromise));
 
   return {
     byCategory: {
@@ -150,6 +185,7 @@ export async function liveQuotes(): Promise<LiveQuotes> {
       gpw: only(wig20, wig, usd),
       usa: only(spx, nasdaq, dow),
       krypto: coins ?? [],
+      spolki: companies,
     },
     ticker: only(gold, wig20, spx, coins?.[0] ?? null, usd),
     fetchedAt: new Date().toISOString(),
@@ -159,7 +195,8 @@ export async function liveQuotes(): Promise<LiveQuotes> {
 // Kursy na żywo, a gdy któregoś nie udało się pobrać — ten z raportu n8n
 export function mergeInstruments(live: Instrument[] | undefined, fromReport: Instrument[] | undefined) {
   const byName = new Map((fromReport ?? []).map((i) => [i.nazwa, i]));
-  for (const i of live ?? []) byName.set(i.nazwa, i);
+  // Łączymy pola: kurs na żywo nadpisuje wartości, a dodatkowe pola z raportu (np. roczny szczyt) zostają
+  for (const i of live ?? []) byName.set(i.nazwa, { ...byName.get(i.nazwa), ...i });
   // Kolejność: jak w raporcie, a nowe na końcu
   const order = [...(fromReport ?? []).map((i) => i.nazwa), ...(live ?? []).map((i) => i.nazwa)];
   return [...new Set(order)].map((n) => byName.get(n)!).filter(Boolean);

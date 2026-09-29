@@ -100,7 +100,12 @@ Dlaczego tak:
 - **Strefa czasowa workflowu:** Europe/Warsaw.
 - **Zapis do apki:** klocek Supabase w trybie **Auto-Map Input Data**, więc sam wysyła `category`, `title`, `content`, `data`.
 - **Tematy** (dodanie nowego = nowa pozycja w tablicy `tematy` w `n8n/src/dane-i-tematy.js`, potem `node n8n/build-workflow.mjs` i ponowne wklejenie):
-  `zloto`, `gpw`, `usa`, `krypto`, `scamy`, `dzien` (podsumowanie dnia).
+  `zloto`, `gpw`, `usa`, `spolki`, `krypto`, `scamy`, `dzien` (podsumowanie dnia).
+- **🏢 Spółki: giganci** (od 29.09): Nvidia, AMD, Apple, Microsoft, Alphabet, Amazon, Meta, Tesla, CD Projekt, PKO BP, Orlen, KGHM, PZU, LPP, Dino, Allegro.
+  - Dane: rok notowań z Yahoo (kurs, zmiany, **odległość od rocznego szczytu i dołka**), największe ruchy dnia i miesiąca.
+  - Newsy: **Google News** z wyszukiwaniem po nazwie spółki (różne portale), tylko artykuły z nazwą spółki w tytule, bez wyników sportowych, filtrowane przez CERT.
+  - Lista spółek jest w DWÓCH miejscach i nazwy muszą się zgadzać: `n8n/src/dane-i-tematy.js` (`SPOLKI`) i `web/src/lib/quotes.ts` (`SPOLKI`, kursy na żywo co 60 s).
+- **🧠 Podsumowanie dnia** (od 29.09) jest dłuższe (ok. 300–450 słów), w sekcjach: 📰 Co się stało, 🔗 Co to znaczy, 🏢 Spółki w ruchu, **💡 Pomysły do rozważenia**, ⚠️ Ryzyka. Pomysły są formułowane jako „można rozważyć / warto przeanalizować”, z liczbami i źródłami, nigdy „kup”. Na końcu dopisek, że to informacja, a nie porada inwestycyjna.
 
 ### Źródła danych
 - **Twarde dane:** NBP (złoto 1 g, USD/PLN, 30 dni), Yahoo Finance (złoto w USD, WIG20, WIG, S&P 500, Nasdaq, Dow Jones), CoinGecko (Bitcoin, Ethereum), lista CERT Polska (ok. 130 tys. domen, w tym ok. 4,5 tys. „finansowych”).

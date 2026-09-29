@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 // Zamienia "[3]" w tekście AI na klikalny przypis prowadzący do newsa nr 3 na liście źródeł
-function withCitations(text: string, keyPrefix: string): ReactNode[] {
+function withCitations(text: string, keyPrefix: string, citations: boolean): ReactNode[] {
+  if (!citations) return [text.replace(/\s*\[\d+\]/g, "")];
   return text.split(/(\[\d+\])/g).map((part, i) => {
     const match = part.match(/^\[(\d+)\]$/);
     if (!match) return part;
@@ -17,34 +18,95 @@ function withCitations(text: string, keyPrefix: string): ReactNode[] {
   });
 }
 
-// Komentarz AI: punkty "- ..." jako lista, "Podsumowanie:" wyróżnione, przypisy klikalne
-export function Commentary({ text }: { text: string }) {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const points = lines.filter((l) => l.startsWith("- "));
-  const summary = lines.find((l) => l.startsWith("Podsumowanie:"));
-  const other = lines.filter((l) => !l.startsWith("- ") && l !== summary);
+// Sekcje rozbudowanego podsumowania dnia (linia z samą nazwą i dwukropkiem)
+const SECTIONS: Record<string, string> = {
+  "co się stało": "📰",
+  "co to znaczy": "🔗",
+  "spółki w ruchu": "🏢",
+  "pomysły do rozważenia": "💡",
+  ryzyka: "⚠️",
+};
 
+type Block =
+  | { kind: "heading"; text: string; icon: string }
+  | { kind: "list"; items: string[] }
+  | { kind: "summary"; text: string }
+  | { kind: "note"; text: string }
+  | { kind: "text"; text: string };
+
+// Tekst AI → bloki w oryginalnej kolejności (nagłówki sekcji, listy punktów, akapity)
+function toBlocks(text: string): Block[] {
+  const blocks: Block[] = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    const heading = line.match(/^([^:\-][^:]{2,40}):\s*$/);
+    const key = heading?.[1].toLowerCase();
+    if (heading && key && (key in SECTIONS || line.length < 45)) {
+      blocks.push({ kind: "heading", text: heading[1], icon: SECTIONS[key] ?? "•" });
+    } else if (line.startsWith("- ")) {
+      const last = blocks[blocks.length - 1];
+      if (last?.kind === "list") last.items.push(line.slice(2));
+      else blocks.push({ kind: "list", items: [line.slice(2)] });
+    } else if (line.startsWith("Podsumowanie:")) {
+      blocks.push({ kind: "summary", text: line.slice("Podsumowanie:".length) });
+    } else if (/nie porada inwestycyjna/i.test(line)) {
+      blocks.push({ kind: "note", text: line });
+    } else {
+      blocks.push({ kind: "text", text: line });
+    }
+  }
+  return blocks;
+}
+
+// Komentarz AI: sekcje, punkty "- " jako lista, "Podsumowanie:" wyróżnione, przypisy klikalne
+export function Commentary({ text, citations = true }: { text: string; citations?: boolean }) {
   return (
     <div className="space-y-3 text-[15px] leading-relaxed">
-      {other.map((l, i) => (
-        <p key={`o${i}`}>{withCitations(l, `o${i}`)}</p>
-      ))}
-      {points.length > 0 && (
-        <ul className="space-y-2.5">
-          {points.map((l, i) => (
-            <li key={`p${i}`} className="flex gap-2.5">
-              <span className="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              <span>{withCitations(l.slice(2), `p${i}`)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {summary && (
-        <p className="rounded-xl border-l-2 border-accent bg-accent/[0.06] px-3 py-2 text-sm">
-          <span className="font-semibold text-accent">Podsumowanie:</span>
-          {withCitations(summary.slice("Podsumowanie:".length), "s")}
-        </p>
-      )}
+      {toBlocks(text).map((b, i) => {
+        const key = `b${i}`;
+        switch (b.kind) {
+          case "heading":
+            return (
+              <h3
+                key={key}
+                className={`pt-2 text-xs font-semibold uppercase tracking-[0.12em] first:pt-0 ${
+                  b.icon === "💡" ? "text-accent" : "text-muted"
+                }`}
+              >
+                <span className="mr-1.5">{b.icon}</span>
+                {b.text}
+              </h3>
+            );
+          case "list":
+            return (
+              <ul key={key} className="space-y-2.5">
+                {b.items.map((item, j) => (
+                  <li key={`${key}-${j}`} className="flex gap-2.5">
+                    <span className="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                    <span>{withCitations(item, `${key}-${j}`, citations)}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          case "summary":
+            return (
+              <p key={key} className="rounded-xl border-l-2 border-accent bg-accent/[0.06] px-3 py-2 text-sm">
+                <span className="font-semibold text-accent">Podsumowanie:</span>
+                {withCitations(b.text, key, citations)}
+              </p>
+            );
+          case "note":
+            return (
+              <p key={key} className="border-t border-line pt-3 text-xs text-muted">
+                {b.text}
+              </p>
+            );
+          default:
+            return <p key={key}>{withCitations(b.text, key, citations)}</p>;
+        }
+      })}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { logout } from "@/app/login/actions";
 import { CategoryCard } from "@/components/category-card";
 import { Commentary } from "@/components/commentary";
@@ -56,7 +57,12 @@ export default async function TodayPage() {
             🧠 Podsumowanie dnia
           </h2>
           {summary.data?.komentarz ? (
-            <Commentary text={summary.data.komentarz.replace(/\s*\[\d+\]/g, "")} />
+            <>
+              <Commentary text={summary.data.komentarz} citations={false} />
+              <Link href="/rynki/dzien" className="mt-4 block text-right text-xs text-muted hover:text-accent">
+                Podsumowanie ze źródłami ›
+              </Link>
+            </>
           ) : (
             <p className="text-sm text-muted">Komentarz AI niedostępny — zajrzyj do tematów poniżej.</p>
           )}

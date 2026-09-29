@@ -81,7 +81,7 @@ export function useLiveInstrument(instrument: Instrument): Instrument {
   if (!quotes) return instrument;
   for (const list of [quotes.ticker, ...Object.values(quotes.byCategory)]) {
     const found = list.find((i) => i.nazwa === instrument.nazwa);
-    if (found) return found;
+    if (found) return { ...instrument, ...found };
   }
   return instrument;
 }

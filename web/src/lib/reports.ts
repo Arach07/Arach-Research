@@ -12,6 +12,12 @@ export type Instrument = {
   seria?: number[];
   zrodlo?: string;
   blad?: string;
+  // Spółki: roczny szczyt/dołek i odległość od nich (w %)
+  symbol?: string;
+  max52?: number;
+  min52?: number;
+  odSzczytu?: number | null;
+  odDolka?: number | null;
 };
 
 export type News = {
@@ -54,13 +60,14 @@ export const CATEGORIES: Record<string, { label: string; icon: string }> = {
   zloto: { label: "Złoto", icon: "🥇" },
   gpw: { label: "GPW", icon: "🇵🇱" },
   usa: { label: "Rynek USA", icon: "🇺🇸" },
+  spolki: { label: "Spółki", icon: "🏢" },
   krypto: { label: "Krypto", icon: "₿" },
   scamy: { label: "Scamy", icon: "🚨" },
   ogolny: { label: "Rynki", icon: "📈" },
 };
 
 // Kolejność kart na ekranach
-export const MARKET_ORDER = ["zloto", "gpw", "usa", "krypto"];
+export const MARKET_ORDER = ["zloto", "gpw", "usa", "spolki", "krypto"];
 
 export function categoryMeta(category: string) {
   return CATEGORIES[category] ?? { label: category, icon: "📄" };
