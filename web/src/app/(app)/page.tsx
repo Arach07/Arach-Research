@@ -6,6 +6,7 @@ import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
+import { NumberCheck, SourceStatus } from "@/components/source-status";
 import { formatDateTime } from "@/lib/format";
 import { MARKET_ORDER, latestReports } from "@/lib/reports";
 
@@ -40,6 +41,9 @@ export default async function TodayPage() {
         <p className="card border-down/40 p-3 text-sm text-down">Nie udało się pobrać raportów: {error}</p>
       )}
 
+      {/* Stan danych: źródła, które nie odpowiedziały (te same w całym uruchomieniu n8n), i brak nowych raportów */}
+      <SourceStatus newest={newest} problemy={reports[0]?.data?.problemy} />
+
       {!error && reports.length === 0 && (
         <EmptyState>Brak raportów. Odpal workflow w n8n, a pierwszy raport pojawi się tutaj.</EmptyState>
       )}
@@ -61,8 +65,16 @@ export default async function TodayPage() {
               <Collapsible>
                 <Commentary text={summary.data.komentarz} citations={false} />
               </Collapsible>
+              <NumberCheck kontrola={summary.data.kontrola} />
               <Link href="/rynki/dzien" className="mt-4 block text-right text-xs text-muted hover:text-accent">
                 Podsumowanie ze źródłami ›
+              </Link>
+              <Link
+                href="/pomysly"
+                className="mt-3 flex items-center justify-between rounded-xl border border-line px-3 py-2.5 text-sm hover:border-line-strong hover:text-accent"
+              >
+                <span>💡 Jak wyszły wcześniejsze pomysły?</span>
+                <span className="text-muted">›</span>
               </Link>
             </>
           ) : (

@@ -51,3 +51,8 @@ export function formatShort(iso: string) {
 export function dayKey(iso: string) {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ }).format(new Date(iso));
 }
+
+// Ile godzin minęło od podanej chwili
+export function hoursSince(iso: string) {
+  return (Date.now() - new Date(iso).getTime()) / 3_600_000;
+}

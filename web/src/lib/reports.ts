@@ -61,9 +61,23 @@ export type CertInfo = {
   blad?: string;
 };
 
+// Źródło, które nie odpowiedziało w danym uruchomieniu n8n
+export type Problem = { zrodlo: string; blad: string };
+
+// Kontrola liczb z komentarza AI (klocek "Weryfikacja źródeł")
+export type Kontrola = {
+  sprawdzone: number;
+  zgodne: number;
+  niezgodne: { liczba: string; fragment: string; powod: string }[];
+};
+
 export type ReportData = {
   wersja?: number;
   komentarz?: string | null;
+  problemy?: Problem[];
+  kontrola?: Kontrola | null;
+  // Podsumowanie dnia: ceny z chwili raportu (do wyników pomysłów)
+  ceny?: Record<string, number>;
   instrumenty?: Instrument[];
   newsy?: News[];
   odrzucone?: string[];

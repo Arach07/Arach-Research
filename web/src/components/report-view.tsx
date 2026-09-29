@@ -6,6 +6,7 @@ import { InstrumentPanel } from "./instruments";
 import { LiveBadge } from "./live-quotes";
 import { NewsList } from "./news-list";
 import { ReportContent } from "./report-content";
+import { NumberCheck } from "./source-status";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -44,7 +45,10 @@ export function ReportView({ report, live = false }: { report: Report; live?: bo
 
       <article className="card card-hero p-5">
         {data.komentarz ? (
-          <Commentary text={data.komentarz} />
+          <>
+            <Commentary text={data.komentarz} />
+            <NumberCheck kontrola={data.kontrola} />
+          </>
         ) : (
           <p className="text-sm text-muted">
             ⚠️ Komentarz AI niedostępny (limit Gemini) — poniżej dane i najważniejsze nagłówki.

@@ -52,6 +52,137 @@ if (start >= 0 && koniec > start) {
   }
 }
 
+// ---------- Kontrola liczb w komentarzu AI ----------
+// Każda liczba z komentarza (procenty, kursy, wartości z jednostką) musi występować w TWARDYCH DANYCH
+// albo w newsach (z dowolnego tematu — podsumowanie dnia cytuje dane z innych tematów).
+// Sprawdzamy też kierunek: "wzrost o 2,5%" przy danych "-2,5%" to błąd.
+
+// Liczba: "4 194,90", "-3,28", "0.3", "83879", "$300,000" (spacja/nbsp jako separator tysięcy)
+const LICZBA = /[-+−]?\d{1,3}(?:[   ]\d{3})+(?:,\d+)?|[-+−]?\d+(?:[.,]\d+)?/g;
+// Mnożnik po liczbie: "84K", "300 million", "2,6 mld", "130 tysięcy"
+const MNOZNIKI = [
+  [/^\s?(tys|tysi|thousand)/i, 1e3],
+  [/^K\b/i, 1e3],
+  [/^\s?(mln|milion|million)/i, 1e6],
+  [/^\s?M\b/, 1e6],
+  [/^\s?(mld|miliard|billion|bn\b)/i, 1e9],
+  [/^\s?B\b/, 1e9],
+  [/^\s?(bln|bilion|trillion)/i, 1e12],
+];
+
+function liczby(tekst) {
+  return [...tekst.matchAll(LICZBA)].map((m) => {
+    const surowa = m[0];
+    const po = tekst.slice(m.index + surowa.length, m.index + surowa.length + 12);
+    const znak = /^[-−]/.test(surowa) ? -1 : surowa.startsWith('+') ? 1 : 0;
+    const cyfry = surowa.replace(/^[-+−]/, '').replace(/[   ]/g, '');
+    const [, ulamek = ''] = cyfry.split(/[.,]/);
+    const wartosc = Number(cyfry.replace(',', '.'));
+    // Wszystkie sensowne odczyty liczby: angielskie "1,665" / "300,000" to tysiące, a nie ułamek
+    const wartosci = [wartosc];
+    if (/^\d{1,3}(,\d{3})+$/.test(cyfry)) wartosci.push(Number(cyfry.replace(/,/g, '')));
+    const mnoznik = MNOZNIKI.find(([re]) => re.test(po))?.[1];
+    if (mnoznik) wartosci.push(...wartosci.map((w) => w * mnoznik));
+    return {
+      surowa,
+      wartosc,
+      wartosci,
+      znak,
+      miejsca: ulamek.length,
+      separator: cyfry.includes('.') ? '.' : cyfry.includes(',') ? ',' : '',
+      procent: /^\s?(%|proc)/.test(po),
+      mnoznik: Boolean(mnoznik),
+      poz: m.index,
+      dl: surowa.length,
+    };
+  });
+}
+
+const tekstyZrodel = $('Dane i tematy').all().flatMap((x) => [x.json.daneTekst ?? '', x.json.newsyTekst ?? '']);
+const dozwolone = tekstyZrodel.flatMap(liczby);
+
+const W_GORE = /wzros|wzrós|wzrost|zysk|urós|urosł|rośnie|rosną|rosła|rósł|podroż|drożej|w górę|odbi|dopisał/i;
+const W_DOL = /spad|strac|tani|zniżk|w dół|obniż|przecen|traci|zjecha|osuwa/i;
+// "około 84 000 USD", "powyżej 4150 pkt", "ponad 8%" — zaokrąglenie jest wtedy w porządku
+const W_PRZYBLIZENIU = /okoł|ok\.|okolic|blisko|rejon|powyżej|poniżej|ponad|niemal|prawie|przekr|przedzia|pułap/i;
+
+function kontrolaLiczb(komentarz) {
+  if (!komentarz) return null;
+  const niezgodne = [];
+  let sprawdzone = 0;
+  for (const l of liczby(komentarz)) {
+    const po = komentarz.slice(l.poz + l.dl, l.poz + l.dl + 12);
+    const przed = komentarz.slice(Math.max(0, l.poz - 45), l.poz);
+    // Pomijamy: przypisy [3], daty 29.09, godziny 14:30, lata 2026
+    if (/\[$/.test(przed) && /^\]/.test(po)) continue;
+    if (l.separator === '.' && l.miejsca === 2 && !l.procent && /^\d{1,2}\.\d{2}$/.test(l.surowa)) continue;
+    if (/:$/.test(przed) || /^:\d/.test(po)) continue;
+    const zJednostka = l.procent || l.mnoznik || /^\s?(proc|pkt|punkt|USD|\$|zł|PLN|EUR)/i.test(po);
+    const rok = l.miejsca === 0 && l.wartosc >= 1990 && l.wartosc <= 2100;
+    // Sprawdzamy tylko liczby "rynkowe": z częścią ułamkową, z jednostką albo duże (kursy)
+    if (rok && !zJednostka) continue;
+    if (!(l.miejsca > 0 || zJednostka || l.wartosc >= 1000)) continue;
+    sprawdzone++;
+
+    // Zgodna, gdy któraś liczba ze źródeł po zaokrągleniu do tylu miejsc, ile podało AI, daje to samo.
+    // Przy "około/powyżej/ponad…" wystarczy bliska wartość (AI zaokrągla: 83 879 → "około 84 000").
+    const przyblizenie = W_PRZYBLIZENIU.test(przed.slice(-25));
+    const zaokr = (v) => Math.round(Math.abs(v) * 10 ** l.miejsca) / 10 ** l.miejsca;
+    const zgodna = (d, w, a) => {
+      if (zaokr(w) === a || Math.abs(Math.abs(w) - a) <= Math.max(0.005, a * 0.0005)) return true;
+      if (!przyblizenie) return false;
+      return l.procent ? Math.abs(Math.abs(w) - a) <= (l.miejsca ? 0.15 : 1) : Math.abs(Math.abs(w) - a) <= a * 0.025;
+    };
+    const pasujace = dozwolone.filter(
+      // Procent z komentarza porównujemy tylko z procentami ze źródeł ("159%" to nie "159 mln")
+      (d) => (!l.procent || d.procent) && d.wartosci.some((w) => l.wartosci.some((a) => zgodna(d, w, a))),
+    );
+    const fragment = komentarz
+      .slice(Math.max(0, l.poz - 60), l.poz + l.dl + 25)
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!pasujace.length) {
+      niezgodne.push({ liczba: l.surowa.trim(), fragment, powod: 'brak tej liczby w danych i newsach' });
+      continue;
+    }
+
+    // Kierunek: jawny znak liczby albo najbliższe słowo przed nią w tym samym fragmencie zdania
+    let kierunek = l.znak;
+    if (!kierunek) {
+      const kawalek = przed.split(/, |; |\(|\. | – | - |\n/).pop();
+      const g = [...kawalek.matchAll(new RegExp(W_GORE.source, 'gi'))].pop()?.index ?? -1;
+      const d = [...kawalek.matchAll(new RegExp(W_DOL.source, 'gi'))].pop()?.index ?? -1;
+      kierunek = g > d ? 1 : d > g ? -1 : 0;
+    }
+    // Błąd tylko wtedy, gdy WSZYSTKIE pasujące liczby ze źródeł to zmiany o przeciwnym znaku
+    if (kierunek && pasujace.every((d) => d.znak !== 0 && d.znak !== kierunek)) {
+      niezgodne.push({
+        liczba: l.surowa.trim(),
+        fragment,
+        powod: kierunek > 0 ? 'AI pisze o wzroście, a dane pokazują spadek' : 'AI pisze o spadku, a dane pokazują wzrost',
+      });
+    }
+  }
+  return { sprawdzone, zgodne: sprawdzone - niezgodne.length, niezgodne };
+}
+
+// Pomysły z podsumowania dnia (sekcja "Pomysły do rozważenia"), osobno — apka liczy ich wyniki.
+// Strzałka na początku: ↑ szansa na wzrost, ↓ ostrzeżenie przed spadkiem (bez strzałki = ↑).
+// Ta sama logika jest w apce (web/src/lib/pomysly.ts) dla starszych raportów.
+function pomyslyZKomentarza(komentarz) {
+  const linie = komentarz.split('\n').map((l) => l.trim());
+  const start = linie.findIndex((l) => /^pomysły do rozważenia:?$/i.test(l));
+  if (start < 0) return [];
+  const pomysly = [];
+  for (const l of linie.slice(start + 1)) {
+    if (!l) continue;
+    if (!l.startsWith('- ')) break;
+    const tekst = l.slice(2).trim();
+    pomysly.push({ tekst: tekst.replace(/^[↑↓⬆⬇]\s*/, ''), kierunek: /^[↓⬇]/.test(tekst) ? -1 : 1 });
+  }
+  return pomysly;
+}
+
 return $('Dane i tematy').all().map((item, i) => {
   const temat = item.json;
   const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));
@@ -98,6 +229,10 @@ return $('Dane i tematy').all().map((item, i) => {
       data: {
         wersja: 2,
         komentarz,
+        // Źródła, które nie odpowiedziały w tym uruchomieniu (te same dla wszystkich tematów)
+        problemy: temat.problemy ?? [],
+        kontrola: kontrolaLiczb(komentarz),
+        ...(temat.category === 'dzien' && komentarz ? { pomysly: pomyslyZKomentarza(komentarz) } : {}),
         instrumenty: temat.instrumenty,
         newsy: zNumerami,
         odrzucone,

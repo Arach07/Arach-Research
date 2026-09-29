@@ -9,6 +9,12 @@ const http = (url, json = true) =>
     timeout: 30000,
   });
 
+// Stan źródeł: co nie odpowiedziało. Raport i tak powstaje, a apka pokazuje ostrzeżenie.
+const problemy = [];
+function zglos(zrodlo, blad) {
+  if (!problemy.some((p) => p.zrodlo === zrodlo)) problemy.push({ zrodlo, blad: String(blad ?? '').slice(0, 160) });
+}
+
 const pct = (now, before) => (before ? ((now - before) / before) * 100 : null);
 const fmtPct = (v) =>
   v == null || Number.isNaN(v) ? 'b/d' : (v > 0 ? '+' : '') + v.toFixed(2).replace('.', ',') + '%';
@@ -114,6 +120,7 @@ async function bezpiecznie(nazwa, fn) {
   try {
     return await fn();
   } catch (e) {
+    zglos(nazwa, e.message);
     return [{ nazwa, blad: e.message }];
   }
 }
@@ -128,7 +135,8 @@ async function zGodzinowych(symbol) {
       if (cl[i] != null) dni.set(new Date(t * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }), cl[i]);
     });
     return [...dni.values()];
-  } catch {
+  } catch (e) {
+    zglos(`Yahoo (godzinowe ${symbol})`, e.message);
     return [];
   }
 }
@@ -190,7 +198,7 @@ async function pobierzKanal(klucz) {
     kanaly[klucz] = (async () => {
       try {
         const xml = await http(RSS[klucz], false);
-        return xml
+        const lista = xml
           .split(/<item[\s>]/i)
           .slice(1)
           .map((it) => {
@@ -211,7 +219,10 @@ async function pobierzKanal(klucz) {
             };
           })
           .filter((n) => n.tytul && /^https?:\/\//.test(n.link));
-      } catch {
+        if (!lista.length) zglos(`RSS ${klucz}`, 'pusty kanał (zmienił się format?)');
+        return lista;
+      } catch (e) {
+        zglos(`RSS ${klucz}`, e.message);
         return []; // kanał nie odpowiada — pomijamy
       }
     })();
@@ -279,7 +290,8 @@ async function newsyOSpolce(s, naSpolke = 2) {
       .filter((n) => !/\b\d{1,2}\s?:\s?\d{1,2}\b|mecz|ligi|liga|piłkar|siatkar|szczypiorn|kibic/i.test(n.tytul))
       .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0))
       .slice(0, naSpolke);
-  } catch {
+  } catch (e) {
+    zglos('Google News', e.message);
     return [];
   }
 }
@@ -505,7 +517,9 @@ try {
       typ: 'makro',
     });
   }
-} catch {}
+} catch (e) {
+  zglos('Kalendarz makro (Forex Factory)', e.message);
+}
 const SPOLKI_USA = SPOLKI.filter((s) => !s.symbol.includes('.'));
 for (let i = 0; i < 14; i++) {
   const dzien = new Date(Date.now() + i * 864e5).toISOString().slice(0, 10);
@@ -525,7 +539,8 @@ for (let i = 0; i < 14; i++) {
         typ: 'wyniki',
       });
     }
-  } catch {
+  } catch (e) {
+    zglos('Wyniki spółek (Nasdaq)', e.message);
     break; // Nasdaq nie odpowiada — pomijamy wyniki
   }
 }
@@ -607,6 +622,7 @@ try {
     przyklady: [...finansowe].sort(() => Math.random() - 0.5).slice(0, 12),
   };
 } catch (e) {
+  zglos('Lista CERT Polska', e.message);
   cert = { blad: e.message };
 }
 const certTekst = cert.blad
@@ -723,6 +739,8 @@ tematy.push({
     '— KALENDARZ (czas polski) —', ...(kalendarzTekst.slice(0, 10).length ? kalendarzTekst.slice(0, 10) : ['brak ważnych wydarzeń']),
   ],
   newsy: newsyDnia,
+  // Migawka cen z chwili raportu — apka liczy z niej wyniki "Pomysłów do rozważenia"
+  extra: { ceny: Object.fromEntries(kluczowe.map((i) => [i.nazwa, i.wartosc])) },
   prompt: `Rozbudowany RAPORT DNIA dla inwestora indywidualnego (ok. 500-800 słów — może być długi, czytelnik czyta go raz, dokładnie). WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie w tej kolejności:
 Co się stało:
 Od ostatniego raportu:
@@ -741,7 +759,7 @@ Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
 - "Sygnały techniczne" — szerokość rynku (ile spółek nad średnią 200 dni vs tydzień temu), spółki wyprzedane/wykupione (RSI), testy średniej 200 dni. Wyjaśniaj po ludzku, co znaczy dany sygnał.
 - "Spółki w ruchu" — największe wzrosty/spadki dużych spółek i ich POWODY z newsów.
 - "Rekomendacje dnia" — rekomendacje analityków z newsów (kto, dla jakiej spółki, jaka ocena, cena docelowa tylko jeśli jest w newsie, z numerem źródła). Jeśli brak — napisz to.
-- "Pomysły do rozważenia" — 2-4 pomysły łączące dane: np. wyprzedana spółka (RSI) + dobry news + rekomendacja; co, dlaczego teraz (liczby + źródło), na co uważać. Sformułowania "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk".
+- "Pomysły do rozważenia" — 2-4 pomysły łączące dane: np. wyprzedana spółka (RSI) + dobry news + rekomendacja; co, dlaczego teraz (liczby + źródło), na co uważać. Sformułowania "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk". Każdy pomysł dotyczy JEDNEJ spółki lub instrumentu (pełna nazwa jak w danych) i zaczyna się od strzałki: "- ↑ " gdy chodzi o szansę na wzrost, "- ↓ " gdy to ostrzeżenie przed spadkiem.
 - "Ryzyka" — co może pójść nie tak (makro, geopolityka, zmienność, wydarzenia z kalendarza).
 Na samym końcu osobna linia: "To informacja, nie porada inwestycyjna — przed decyzją zweryfikuj sam i dopasuj do swojej sytuacji."`,
 });
@@ -763,6 +781,7 @@ return tematy.map((t) => ({
     ...t,
     title: `${t.title} — ${dzis}`,
     dzis,
+    problemy,
     daneTekst: [...t.instrumenty.map(opis), ...(t.dodatkowe ?? [])].map((d) => '- ' + d).join('\n') || '- brak',
     newsyTekst: t.newsy.length
       ? t.newsy.map((n) => `[${n.nr}] ${godz(n.data)} ${n.domena} — ${n.tytul}. ${n.opis}`).join('\n')

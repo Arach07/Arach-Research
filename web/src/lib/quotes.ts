@@ -96,7 +96,7 @@ async function yahoo(symbol: string, nazwa: string, jednostka: string, revalidat
 }
 
 // Duże spółki — te same co w n8n (n8n/src/dane-i-tematy.js, SPOLKI); nazwy muszą się zgadzać.
-const SPOLKI = [
+export const SPOLKI = [
   ["NVDA", "Nvidia"], ["AMD", "AMD"], ["AAPL", "Apple"], ["MSFT", "Microsoft"],
   ["GOOGL", "Alphabet (Google)"], ["AMZN", "Amazon"], ["META", "Meta"], ["TSLA", "Tesla"],
   ["CDR.WA", "CD Projekt"], ["PKO.WA", "PKO BP"], ["PKN.WA", "Orlen"], ["KGH.WA", "KGHM"],
