@@ -1,6 +1,6 @@
 # Research: notatka o stanie projektu
 
-**Stan na: poniedziałek 28.09.2026, ok. 16:50 (komputer w pracy)**
+**Stan na: wtorek 29.09.2026, rano (komputer w pracy)**
 
 Ta notatka opisuje dokładnie, co już działa, gdzie co jest i co robimy dalej.
 Żeby wrócić do pracy, napisz w Claude Code: **„jestem w domu, robimy VPN”** albo **„robimy Oracle”**.
@@ -153,9 +153,9 @@ Gdy będziesz chciał, żeby n8n działał niezależnie: dwuklik na `n8n/start-n
 - [x] Kursy na żywo co 20 s, szybsze zakładki, kółeczko ładowania, stabilny układ ✅.
 
 **Do zrobienia (najbliższe):**
-1. [ ] **Wgrać NAJNOWSZY workflow** z `n8n/raport-dzienny.json` (**5 modeli + do 3 rund z pauzą 60 s**): w n8n Ctrl+A, Delete, wklej, sprawdź **Credential** w 5 klockach modeli i w „Zapis do apki”, Ctrl+S.
-2. [ ] **Publish** (prawy górny róg), żeby harmonogram 9:00/14:00/20:00 działał. W nowej wersji nie ma już testowej reguły 16:30.
-3. [ ] **Sprawdzić raport z 20:00:** w apce „Komentarze z raportu: pon. 20:00” i czy jest komentarz AI. Jeśli nie, n8n, Executions, uruchomienie z 20:00, screen czerwonych klocków i treść błędu (429 = limit, 503 = przeciążenie).
+1. [x] **Wgrać NAJNOWSZY workflow** z `n8n/raport-dzienny.json` (**5 modeli + do 3 rund z pauzą 60 s**): w n8n Ctrl+A, Delete, wklej, sprawdź **Credential** w 5 klockach modeli i w „Zapis do apki”, Ctrl+S.
+2. [x] **Publish** (prawy górny róg), żeby harmonogram 9:00/14:00/20:00 działał. W nowej wersji nie ma już testowej reguły 16:30.
+3. [x] ✅ 28.09 20:00 i 29.09 9:00: raport z komentarzem, Gemini 1 za pierwszym razem (ok. 30 s). Popołudniowe błędy 28.09 to była awaria/przeciążenie Google. **Sprawdzić raport z 20:00:** w apce „Komentarze z raportu: pon. 20:00” i czy jest komentarz AI. Jeśli nie, n8n, Executions, uruchomienie z 20:00, screen czerwonych klocków i treść błędu (429 = limit, 503 = przeciążenie).
 3a. [ ] **Później: model spoza Google na końcu łańcucha**, żeby awaria Google (28.09 od ok. 16:30 wszystkie 5 modeli dawało 503) nie zostawiała raportu bez komentarza. Kandydaci darmowi: **Groq** (modele Llama, bez karty, bardzo szybki) albo **OpenRouter** (darmowe modele). Uwaga: **Groq ≠ Grok** — Grok to model firmy xAI (płatny API), Groq to darmowa platforma z modelami open source. Potrzebne: konto + klucz API, w n8n klocek HTTP Request albo gotowy klocek Groq.
 4. [ ] Decyzja: dołożyć `gemini-3.8-flash` jako 6. model przed Gemmą? (propozycja Claude'a, jedna linijka w `MODELE`).
 5. [ ] Jeśli n8n ma działać bez otwartego Claude Code: `start-n8n.cmd` + **autostart** (Win+R, `shell:startup`, skrót do `start-n8n.cmd`).
