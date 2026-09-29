@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { logout } from "@/app/login/actions";
 import { CategoryCard } from "@/components/category-card";
+import { Collapsible } from "@/components/collapsible";
 import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
@@ -58,7 +59,9 @@ export default async function TodayPage() {
           </h2>
           {summary.data?.komentarz ? (
             <>
-              <Commentary text={summary.data.komentarz} citations={false} />
+              <Collapsible>
+                <Commentary text={summary.data.komentarz} citations={false} />
+              </Collapsible>
               <Link href="/rynki/dzien" className="mt-4 block text-right text-xs text-muted hover:text-accent">
                 Podsumowanie ze źródłami ›
               </Link>
