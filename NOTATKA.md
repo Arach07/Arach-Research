@@ -201,6 +201,7 @@ Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Now
 7. VPN w domu (zadanie B, nauka).
 8. Archiwum: „Pokaż starsze” (teraz ostatnie 100 raportów).
 9. Plan rozbudowy z sekcji 7 (watchlista, portfel, alerty cenowe, lista KNF) — część już zrobiona (kalendarz, makro, powiadomienia).
+10. **Historia wydarzeń z kalendarza** — teraz „Co przed nami” i kalendarz dla AI pokazują tylko przyszłe wydarzenia (tak zostaje). Kiedyś: osobny widok minionych wydarzeń z odczytami (np. „inflacja PCE: prognoza 0,3%, wyszło 0,2%”) i ich wpływem na rynek.
 
 ### A. Teraz, na komputerze w pracy (chodzi 24 h)
 
