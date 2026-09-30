@@ -36,6 +36,14 @@ const PAUZA_MIEDZY_RUNDAMI_S = 60;
 // Przeciążenie Gemini (503 "Service unavailable") zwykle mija po chwili — przed kolejnym modelem czekamy
 const PAUZA_MIEDZY_MODELAMI_S = 10;
 
+// Identyfikatory credentiali w moim n8n (nie są tajne — same klucze są zaszyfrowane w n8n).
+// Dzięki nim import workflowu od razu podpina credentiale, bez wybierania ręcznie w klockach.
+const CREDENTIALE = {
+  gemini: 'm90yjz0Ioof59Rtl',
+  supabase: 'LEPEIbBKKuf3XEyp',
+  powiadomienia: 'sz5mXgGjKkryIB2q',
+};
+
 // Adres apki na Vercelu (publiczny, ten sam co w telefonie) — tu n8n zleca wysłanie powiadomień
 const APP_URL = 'https://web-xi-nine-19.vercel.app';
 
@@ -68,7 +76,7 @@ function gemini(m, i, position) {
     waitBetweenTries: 5000,
     // Gdy model nie odpowie (np. limit), workflow idzie dalej zamiast się zatrzymać
     onError: 'continueRegularOutput',
-    credentials: { googlePalmApi: { name: 'Google Gemini(PaLM) Api account' } },
+    credentials: { googlePalmApi: { id: CREDENTIALE.gemini, name: 'Google Gemini(PaLM) Api account' } },
   };
 }
 
@@ -224,7 +232,7 @@ const workflow = {
       type: 'n8n-nodes-base.supabase',
       typeVersion: 1,
       position: [X(ostatni) + 1100, 0],
-      credentials: { supabaseApi: { name: 'Supabase account' } },
+      credentials: { supabaseApi: { id: CREDENTIALE.supabase, name: 'Supabase account' } },
     },
     {
       // Powiadomienie na telefon: "Raport 14:00 gotowy · WIG20 −0,4% · …"
@@ -245,7 +253,7 @@ const workflow = {
       typeVersion: 1,
       position: [X(ostatni) + 1540, 0],
       onError: 'continueRegularOutput',
-      credentials: { supabaseApi: { name: 'Supabase account' } },
+      credentials: { supabaseApi: { id: CREDENTIALE.supabase, name: 'Supabase account' } },
     },
     {
       // Apka wysyła powiadomienie (klucze VAPID są na Vercelu). Hasło w nagłówku x-push-secret.
@@ -267,7 +275,7 @@ const workflow = {
       position: [X(ostatni) + 1760, 0],
       executeOnce: true,
       onError: 'continueRegularOutput',
-      credentials: { httpHeaderAuth: { name: 'Powiadomienia (hasło)' } },
+      credentials: { httpHeaderAuth: { id: CREDENTIALE.powiadomienia, name: 'Powiadomienia (hasło)' } },
     },
   ],
   connections: {
