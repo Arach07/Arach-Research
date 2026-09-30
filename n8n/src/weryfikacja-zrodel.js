@@ -101,7 +101,8 @@ function liczby(tekst) {
 const tekstyZrodel = $('Dane i tematy').all().flatMap((x) => [x.json.daneTekst ?? '', x.json.newsyTekst ?? '']);
 const dozwolone = tekstyZrodel.flatMap(liczby);
 
-const W_GORE = /wzros|wzrós|wzrost|zysk|urós|urosł|rośnie|rosną|rosła|rósł|podroż|drożej|w górę|odbi|dopisał/i;
+// Uwaga na polskie odmiany: "wzroście" (ś), "rosnąć", "zwyżka"
+const W_GORE = /wzros|wzroś|wzrós|wzrost|zysk|urós|urosł|rośnie|rosną|rosnąc|rosła|rósł|zwyżk|podroż|drożej|w górę|odbi|dopisał/i;
 const W_DOL = /spad|strac|tani|zniżk|w dół|obniż|przecen|traci|zjecha|osuwa/i;
 // "około 84 000 USD", "powyżej 4150 pkt", "ponad 8%" — zaokrąglenie jest wtedy w porządku
 const W_PRZYBLIZENIU = /okoł|ok\.|okolic|blisko|rejon|powyżej|poniżej|ponad|niemal|prawie|przekr|przedzia|pułap/i;
