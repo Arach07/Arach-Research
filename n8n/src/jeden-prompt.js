@@ -8,9 +8,13 @@ const typ = tematy[0]?.typRaportu;
 const JAK_PISAC = {
   trwa: (r) => `${r.rynek}: sesja TRWA — pisz "w trakcie sesji", "rośnie/spada"; NIE pisz, że ${r.rynek} "zakończył(a) sesję" ani "na zamknięciu".`,
   zamknieta: (r) => `${r.rynek}: dzisiejsza sesja ZAMKNIĘTA — pisz "zakończył(a) sesję", to wynik ostateczny dnia.`,
-  przed: (r) => `${r.rynek}: dziś sesja jeszcze się NIE zaczęła — liczby są z poprzedniej sesji; pisz np. "na wtorkowym zamknięciu", NIE "dziś".`,
-  poprzednia: (r) => `${r.rynek}: dziś nie ma sesji — liczby są z ostatniej sesji; podaj jej dzień, NIE pisz "dziś".`,
+  przed: (r) => `${r.rynek}: dziś sesja jeszcze się NIE zaczęła — liczby są z sesji ${dzien(r.dzien)}; pisz np. "na zamknięciu sesji ${dzien(r.dzien)}", NIE "dziś".`,
+  poprzednia: (r) => `${r.rynek}: dziś nie ma sesji — liczby są z ostatniej sesji (${dzien(r.dzien)}); NIE pisz "dziś".`,
 };
+// "wt. 29.09" — dzień sesji, z której są liczby
+function dzien(d) {
+  return d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw', weekday: 'short', day: '2-digit', month: '2-digit' }) : 'poprzedniej';
+}
 const zasadyCzasu = (tematy[0]?.stanRynkow ?? [])
   .filter((r) => ['GPW', 'USA'].includes(r.rynek) && JAK_PISAC[r.status])
   .map((r) => JAK_PISAC[r.status](r));
