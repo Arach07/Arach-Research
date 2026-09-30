@@ -614,7 +614,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://UZUPELNIJ.vercel.app/api/push/wyslij",
+        "url": "https://web-xi-nine-19.vercel.app/api/push/wyslij",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

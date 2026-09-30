@@ -37,7 +37,7 @@ const PAUZA_MIEDZY_RUNDAMI_S = 60;
 const PAUZA_MIEDZY_MODELAMI_S = 10;
 
 // Adres apki na Vercelu (publiczny, ten sam co w telefonie) — tu n8n zleca wysłanie powiadomień
-const APP_URL = 'https://UZUPELNIJ.vercel.app';
+const APP_URL = 'https://web-xi-nine-19.vercel.app';
 
 const id = (n) => `7b0f7a1e-1111-4a6b-9c01-${String(n).padStart(12, '0')}`;
 

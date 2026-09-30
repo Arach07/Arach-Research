@@ -15,7 +15,7 @@ function konfiguruj() {
   if (gotowe) return;
   webpush.setVapidDetails(
     // Kontakt dla usług push (Apple/Google) — adres apki zamiast e-maila
-    process.env.VAPID_SUBJECT ?? "https://research.app",
+    process.env.VAPID_SUBJECT ?? "https://web-xi-nine-19.vercel.app",
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!,
   );
