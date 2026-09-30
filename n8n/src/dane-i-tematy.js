@@ -611,20 +611,27 @@ const kalendarzTekst = wydarzenia.slice(0, 25).map(
 const teraz = new Date();
 const dzienTygodnia = teraz.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' });
 const godzinaPl = Number(teraz.toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false }));
-// Harmonogram: pn–pt 8:30 / 17:15 / 22:15, sobota 10:00, niedziela 18:00. Ręczny test — według pory dnia.
+const minutaDnia = godzinaPl * 60 + Number(teraz.toLocaleString('en-GB', { timeZone: TZ, minute: '2-digit' }));
+// Harmonogram: pn–pt 8:30 / 17:15 / 22:15, sobota 10:00, niedziela 18:00.
+// W dni robocze nazwa pasuje do pory tylko do 45 min po planowanej godzinie — inaczej "Raport dodatkowy"
+// (np. ręczny test o 14:50 to nie jest raport "po sesji GPW", bo sesja jeszcze trwa).
+const PORY = [
+  ['przed-sesja', 8 * 60 + 30],
+  ['po-gpw', 17 * 60 + 15],
+  ['po-usa', 22 * 60 + 15],
+];
 const TYPY = {
   'przed-sesja': { nazwa: 'Przed sesją', ikona: '🌅' },
   'po-gpw': { nazwa: 'Po sesji GPW', ikona: '🇵🇱' },
   'po-usa': { nazwa: 'Po sesji w USA', ikona: '🇺🇸' },
   sobota: { nazwa: 'Podsumowanie tygodnia', ikona: '📆' },
   niedziela: { nazwa: 'Przed tygodniem', ikona: '🔭' },
+  dodatkowy: { nazwa: 'Raport dodatkowy', ikona: '🔄' },
 };
 const kodTypu =
   dzienTygodnia === 'Sat' ? 'sobota'
   : dzienTygodnia === 'Sun' ? 'niedziela'
-  : godzinaPl < 12 ? 'przed-sesja'
-  : godzinaPl < 20 ? 'po-gpw'
-  : 'po-usa';
+  : (PORY.find(([, start]) => minutaDnia >= start && minutaDnia < start + 45)?.[0] ?? 'dodatkowy');
 const typRaportu = { kod: kodTypu, ...TYPY[kodTypu] };
 
 const fmtDzien = (d) =>
