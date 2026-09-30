@@ -12,7 +12,8 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Research', {
+    // Pusty tytuł jest celowy (iPhone i tak pokazuje "from Research") — tylko brak tytułu zastępujemy nazwą
+    self.registration.showNotification(data.title ?? 'Research', {
       body: data.body || 'Nowy raport jest gotowy',
       icon: '/icon-192.png',
       badge: '/icon-192.png',

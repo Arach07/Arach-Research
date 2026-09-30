@@ -35,7 +35,8 @@ export async function POST(request: Request) {
 
   const url = tekst(body?.url, 200);
   const wynik = await wyslij(subskrypcje, {
-    title: tekst(body?.title, 120) || "Research",
+    // Pusty tytuł jest dozwolony: iPhone i tak dopisuje "from Research" nad treścią
+    title: typeof body?.title === "string" ? tekst(body.title, 120) : "Research",
     body: tekst(body?.body, 400) || "Nowy raport jest gotowy",
     // Tylko adresy wewnątrz apki
     url: url.startsWith("/") && !url.startsWith("//") ? url : "/",
