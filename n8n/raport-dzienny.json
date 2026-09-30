@@ -575,6 +575,70 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Klocek \"Treść powiadomienia\": krótka wiadomość na telefon o nowym raporcie —\r\n// godzina, zmiany dnia (WIG20, S&P 500, Bitcoin, złoto), liczba pomysłów i ewentualne ostrzeżenia.\r\n\r\nconst raporty = $('Weryfikacja źródeł').all().map((x) => x.json);\r\nconst dzien = raporty.find((r) => r.category === 'dzien')?.data ?? {};\r\n\r\nconst godzina = new Date().toLocaleTimeString('pl-PL', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit' });\r\nconst zmiana = (v) =>\r\n  Math.abs(v) < 0.05 ? '0%' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1).replace('.', ',') + '%';\r\nconst KROTKO = { WIG20: 'WIG20', 'S&P 500': 'S&P', Bitcoin: 'BTC', 'Złoto NBP (1 g)': 'Złoto' };\r\nconst ruchy = (dzien.instrumenty ?? [])\r\n  .filter((i) => !i.blad && KROTKO[i.nazwa] && i.d1 != null)\r\n  .map((i) => `${KROTKO[i.nazwa]} ${zmiana(i.d1)}`);\r\n\r\nconst odmiana = (n, jeden, kilka, wiele) =>\r\n  n === 1 ? jeden : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? kilka : wiele;\r\nconst pomysly = dzien.pomysly?.length ?? 0;\r\nconst problemy = dzien.problemy?.length ?? 0;\r\nconst niezgodne = raporty.reduce((s, r) => s + (r.data?.kontrola?.niezgodne?.length ?? 0), 0);\r\n\r\nconst czesci = [\r\n  ruchy.join(' · '),\r\n  pomysly ? `💡 ${pomysly} ${odmiana(pomysly, 'pomysł', 'pomysły', 'pomysłów')}` : '',\r\n  dzien.komentarz ? '' : '⚠️ bez komentarza AI',\r\n  problemy ? `⚠️ ${problemy} ${odmiana(problemy, 'źródło nie odpowiada', 'źródła nie odpowiadają', 'źródeł nie odpowiada')}` : '',\r\n  niezgodne ? `⚠️ ${niezgodne} ${odmiana(niezgodne, 'liczba', 'liczby', 'liczb')} AI do sprawdzenia` : '',\r\n].filter(Boolean);\r\n\r\nreturn [\r\n  {\r\n    json: {\r\n      title: `🧠 Raport ${godzina} gotowy`,\r\n      body: czesci.join(' · ') || 'Nowy raport jest gotowy',\r\n      url: '/',\r\n      tag: 'raport',\r\n    },\r\n  },\r\n];\r\n"
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000600",
+      "name": "Treść powiadomienia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "push_subscriptions",
+        "returnAll": true
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000601",
+      "name": "Urządzenia",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://UZUPELNIJ.vercel.app/api/push/wyslij",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ...$('Treść powiadomienia').first().json, subskrypcje: $input.all().map((x) => x.json).filter((s) => s.endpoint).map((s) => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })) }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "7b0f7a1e-1111-4a6b-9c01-000000000602",
+      "name": "Wyślij powiadomienie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4400,
+        0
+      ],
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Powiadomienia (hasło)"
+        }
+      }
     }
   ],
   "connections": {
@@ -856,6 +920,39 @@
         [
           {
             "node": "Zapis do apki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapis do apki": {
+      "main": [
+        [
+          {
+            "node": "Treść powiadomienia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Treść powiadomienia": {
+      "main": [
+        [
+          {
+            "node": "Urządzenia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Urządzenia": {
+      "main": [
+        [
+          {
+            "node": "Wyślij powiadomienie",
             "type": "main",
             "index": 0
           }

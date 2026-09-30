@@ -67,8 +67,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Pomija pliki statyczne, ikony i manifest PWA
+  // Pomija pliki statyczne, ikony, manifest PWA, service worker (powiadomienia)
+  // i adres, przez który n8n zleca wysłanie powiadomień (ma własne hasło, patrz api/push/wyslij)
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|icon-192.png|icon-512.png|apple-icon.png|manifest.webmanifest|sw.js|api/push/wyslij).*)",
   ],
 };

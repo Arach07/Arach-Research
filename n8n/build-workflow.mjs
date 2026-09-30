@@ -36,6 +36,9 @@ const PAUZA_MIEDZY_RUNDAMI_S = 60;
 // Przeciążenie Gemini (503 "Service unavailable") zwykle mija po chwili — przed kolejnym modelem czekamy
 const PAUZA_MIEDZY_MODELAMI_S = 10;
 
+// Adres apki na Vercelu (publiczny, ten sam co w telefonie) — tu n8n zleca wysłanie powiadomień
+const APP_URL = 'https://UZUPELNIJ.vercel.app';
+
 const id = (n) => `7b0f7a1e-1111-4a6b-9c01-${String(n).padStart(12, '0')}`;
 
 function gemini(m, i, position) {
@@ -223,6 +226,49 @@ const workflow = {
       position: [X(ostatni) + 1100, 0],
       credentials: { supabaseApi: { name: 'Supabase account' } },
     },
+    {
+      // Powiadomienie na telefon: "Raport 14:00 gotowy · WIG20 −0,4% · …"
+      parameters: { jsCode: src('tresc-powiadomienia.js') },
+      id: id(600),
+      name: 'Treść powiadomienia',
+      type: 'n8n-nodes-base.code',
+      typeVersion: 2,
+      position: [X(ostatni) + 1320, 0],
+      onError: 'continueRegularOutput',
+    },
+    {
+      // Urządzenia z włączonymi powiadomieniami (tabela z supabase/push.sql). 0 urządzeń = koniec.
+      parameters: { operation: 'getAll', tableId: 'push_subscriptions', returnAll: true },
+      id: id(601),
+      name: 'Urządzenia',
+      type: 'n8n-nodes-base.supabase',
+      typeVersion: 1,
+      position: [X(ostatni) + 1540, 0],
+      onError: 'continueRegularOutput',
+      credentials: { supabaseApi: { name: 'Supabase account' } },
+    },
+    {
+      // Apka wysyła powiadomienie (klucze VAPID są na Vercelu). Hasło w nagłówku x-push-secret.
+      parameters: {
+        method: 'POST',
+        url: `${APP_URL}/api/push/wyslij`,
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpHeaderAuth',
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody:
+          "={{ JSON.stringify({ ...$('Treść powiadomienia').first().json, subskrypcje: $input.all().map((x) => x.json).filter((s) => s.endpoint).map((s) => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })) }) }}",
+        options: { timeout: 30000 },
+      },
+      id: id(602),
+      name: 'Wyślij powiadomienie',
+      type: 'n8n-nodes-base.httpRequest',
+      typeVersion: 4.2,
+      position: [X(ostatni) + 1760, 0],
+      executeOnce: true,
+      onError: 'continueRegularOutput',
+      credentials: { httpHeaderAuth: { name: 'Powiadomienia (hasło)' } },
+    },
   ],
   connections: {
     Start: { main: [[to('Dane i tematy')]] },
@@ -235,6 +281,9 @@ const workflow = {
     'Kolejna runda?': { main: [[to(`Pauza ${PAUZA_MIEDZY_RUNDAMI_S} s`)], [WERYFIKACJA]] },
     [`Pauza ${PAUZA_MIEDZY_RUNDAMI_S} s`]: { main: [[to('Runda')]] },
     'Weryfikacja źródeł': { main: [[to('Zapis do apki')]] },
+    'Zapis do apki': { main: [[to('Treść powiadomienia')]] },
+    'Treść powiadomienia': { main: [[to('Urządzenia')]] },
+    Urządzenia: { main: [[to('Wyślij powiadomienie')]] },
   },
   settings: { executionOrder: 'v1', timezone: 'Europe/Warsaw' },
 };

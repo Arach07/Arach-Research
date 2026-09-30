@@ -6,6 +6,7 @@ import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
+import { PushToggle } from "@/components/push-toggle";
 import { NumberCheck, SourceStatus } from "@/components/source-status";
 import { formatDateTime } from "@/lib/format";
 import { MARKET_ORDER, latestReports } from "@/lib/reports";
@@ -89,6 +90,8 @@ export default async function TodayPage() {
         ))}
         {scams && <CategoryCard report={scams} href="/scamy" />}
       </div>
+
+      <PushToggle />
     </div>
   );
 }
