@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { InstrumentPanel } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
@@ -30,9 +30,7 @@ export default async function CompanyPage({ params }: PageProps<"/spolki/[symbol
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/rynki?widok=spolki" className="mb-3 inline-block text-sm text-muted hover:text-accent">
-          ‹ Spółki
-        </Link>
+        <BackLink href="/rynki?widok=spolki" label="Spółki" />
         <div className="flex items-end justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">
             {company.nazwa} <span className="text-sm font-normal text-muted">{company.symbol}</span>

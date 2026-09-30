@@ -57,7 +57,7 @@ export default async function IdeasPage() {
 
   return (
     <>
-      <PageHeader title="💡 Wyniki pomysłów" subtitle="Czy „Pomysły do rozważenia” z raportów się sprawdzają" back="/" />
+      <PageHeader title="💡 Wyniki pomysłów" subtitle="Czy „Pomysły do rozważenia” z raportów się sprawdzają" back="/" backLabel="Dziś" />
 
       {error && <p className="card border-down/40 p-3 text-sm text-down">Nie udało się pobrać pomysłów: {error}</p>}
 

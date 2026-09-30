@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { ReportView } from "@/components/report-view";
@@ -19,9 +20,7 @@ export default async function CategoryPage({ params }: PageProps<"/rynki/[katego
 
   return (
     <>
-      <Link href="/rynki" className="mb-3 inline-block text-sm text-muted hover:text-accent">
-        ‹ Rynki
-      </Link>
+      <BackLink href="/rynki" label="Rynki" />
       <ReportView report={latest} live={LIVE_CATEGORIES.includes(kategoria)} />
 
       {older.length > 0 && (

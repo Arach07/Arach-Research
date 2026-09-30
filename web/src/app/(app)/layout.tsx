@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           żeby telefon nie przesuwał swoich pasków i naszego dolnego menu przy zmianie zakładek */}
       {/* pt: na iPhonie apka z ekranu głównego zaczyna się pod paskiem z godziną i aparatem
           (black-translucent) — odsuwamy treść o jego wysokość, żeby "‹ Wróć" i nagłówki dało się kliknąć */}
-      <main className="mx-auto min-h-[100dvh] w-full max-w-2xl flex-1 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-28">
+      <main className="mx-auto min-h-[100dvh] w-full max-w-2xl flex-1 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-28">
         {children}
       </main>
       <BottomNav />
