@@ -12,16 +12,24 @@ const IKONY: Record<StanRynku["status"], string> = {
   brak: "⚪",
 };
 
-// "📌 Stan rynków" z chwili raportu: co jest już ostateczne (✅), co trwa (🟢), a co jest z poprzedniej sesji (⏳)
+// "📌 Stan rynków" z chwili raportu: co jest już ostateczne (✅), co trwa (🟢), a co jest z poprzedniej sesji (⏳).
+// Zwinięty pokazuje same ikony rynków w jednej linijce, po stuknięciu — całość.
 export function MarketStatus({ stan, czas }: { stan?: StanRynku[]; czas?: string }) {
   if (!stan?.length) return null;
+  const rynki = stan.filter((s) => s.status !== "info");
   return (
-    <section className="card p-4">
-      <h2 className="mb-2.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-        <span>📌 Stan rynków</span>
-        {czas && <span className="font-normal normal-case tracking-normal text-muted">w chwili raportu · {formatShort(czas)}</span>}
-      </h2>
-      <ul className="space-y-2 text-sm leading-snug">
+    <details className="card group p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-accent">📌 Stan rynków</span>
+          <span className="mt-1 block truncate text-xs text-muted">
+            {rynki.map((s) => `${IKONY[s.status]} ${s.rynek}`).join(" · ")}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm text-accent transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      {czas && <p className="mt-3 text-[11px] text-muted">W chwili raportu · {formatShort(czas)}</p>}
+      <ul className="mt-2 space-y-2 text-sm leading-snug">
         {stan.map((s) => (
           <li key={s.rynek} className="flex gap-2">
             <span className="shrink-0">{IKONY[s.status]}</span>
@@ -34,7 +42,7 @@ export function MarketStatus({ stan, czas }: { stan?: StanRynku[]; czas?: string
       <p className="mt-3 border-t border-line pt-2.5 text-[11px] text-muted">
         ✅ wynik ostateczny · 🟢 jeszcze się zmienia (aktualny kurs przy kafelkach) · ⏳ dane z poprzedniej sesji
       </p>
-    </section>
+    </details>
   );
 }
 

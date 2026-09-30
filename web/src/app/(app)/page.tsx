@@ -59,14 +59,14 @@ export default async function TodayPage() {
         <EmptyState>Brak raportów. Odpal workflow w n8n, a pierwszy raport pojawi się tutaj.</EmptyState>
       )}
 
-      <MarketStatus stan={summary?.data?.stanRynkow} czas={summary?.created_at} />
-
       {ticker.length > 0 && (
         <div className="space-y-2">
           <LiveBadge />
           <Ticker instruments={ticker} />
         </div>
       )}
+
+      <MarketStatus stan={summary?.data?.stanRynkow} czas={summary?.created_at} />
 
       {summary && (
         <section className="card card-hero p-5">
