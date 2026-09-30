@@ -184,6 +184,24 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 
 ## 6. NA CZYM SKOŃCZYLIŚMY: zadania do zrobienia
 
+### 📋 LISTA NA PÓŹNIEJ (stan 30.09.2026) — na pytanie „co robimy?” Claude proponuje stąd
+Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Nowych funkcji na razie nie dodajemy.
+
+**Stabilność i bezpieczeństwo (najpierw):**
+1. **n8n 24/7 poza komputerem w pracy** — restart/wyłączenie komputera = brak raportów (apka ostrzeże). Docelowo Oracle (zadanie C), tymczasowo autostart `start-n8n.cmd` (pkt 5 niżej; na razie „nie, działa dobrze”).
+2. **Zapasowe źródła danych** — Yahoo Finance i Forex Factory to nieoficjalne źródła, mogą zablokować dostęp jak CoinGecko 29.09. Przygotować plan B (inne źródło kursów/kalendarza), zanim coś padnie.
+3. **Klucze do powiadomień w bezpiecznym miejscu** — są tylko w pliku tymczasowym (`klucze-powiadomien.txt` w katalogu tymczasowym Claude). Przepisać do menedżera haseł; w razie utraty: nowe klucze → Vercel (3 zmienne) + n8n (credential „Powiadomienia (hasło)”).
+4. **Stary klucz Gemini** (wklejony kiedyś na czat) — sprawdzić w AI Studio, czy na pewno usunięty (nowy klucz nie wyłącza starego).
+
+**Do obserwacji:**
+5. Pierwszy raport sobotni (📆 10:00) i niedzielny (🔭 18:00) — sprawdzić, jak AI radzi sobie z nowymi poleceniami i czy niedzielny kalendarz ma już nowy tydzień.
+
+**Później / opcjonalnie:**
+6. Model spoza Google na końcu łańcucha (Groq) — 30.09: „mamy tyle modeli, na razie nie ma sensu”.
+7. VPN w domu (zadanie B, nauka).
+8. Archiwum: „Pokaż starsze” (teraz ostatnie 100 raportów).
+9. Plan rozbudowy z sekcji 7 (watchlista, portfel, alerty cenowe, lista KNF) — część już zrobiona (kalendarz, makro, powiadomienia).
+
 ### A. Teraz, na komputerze w pracy (chodzi 24 h)
 
 **Gdzie działa n8n:** obecnie **z okna rozmowy z Claude Code** (a nie z `start-n8n.cmd`).
