@@ -161,7 +161,7 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 
 ### Powiadomienia push (od 30.09)
 - Po zapisaniu raportu n8n wysyła na telefon: „🧠 Raport 14:00 gotowy · WIG20 −0,4% · S&P +0,2% · BTC +1,1% · 💡 2 pomysły” (+ ostrzeżenia o źródłach i liczbach AI). Stuknięcie otwiera Dziś.
-- Włączanie: na dole zakładki Dziś „🔔 Powiadomienia o raportach” → Włącz, potem „Test”. Każde urządzenie osobno (iPhone, Android, komputer). **iPhone: tylko w apce dodanej do ekranu początkowego i otwartej z ikony (iOS 16.4+).**
+- Włączanie: dzwonek w prawym górnym rogu Dziś (🔔 włączone / 🔕 wyłączone) → Włącz, potem „Wyślij test”. Każde urządzenie osobno (iPhone, Android, komputer). **iPhone: tylko w apce dodanej do ekranu początkowego i otwartej z ikony (iOS 16.4+).**
 - Jak to działa: urządzenia są w tabeli `push_subscriptions` (`supabase/push.sql`). n8n (klocki Treść powiadomienia → Urządzenia → Wyślij powiadomienie) czyta listę urządzeń i woła `/api/push/wyslij` w apce z hasłem w nagłówku `x-push-secret`. Apka podpisuje wiadomość kluczami VAPID i wysyła przez Apple/Google. Service worker: `web/public/sw.js`.
 - Klucze (nie w repo): na Vercelu `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `PUSH_SECRET`; w n8n credential „Header Auth” o nazwie **Powiadomienia (hasło)** (Name `x-push-secret`, Value = PUSH_SECRET). Adres apki: `APP_URL` w `n8n/build-workflow.mjs`.
 - Uwaga: każde ręczne „Execute workflow” też wysyła powiadomienie.

@@ -33,9 +33,12 @@ export default async function TodayPage() {
           </h1>
           {newest && <p className="text-sm text-muted">Komentarze z raportu: {formatDateTime(newest)}</p>}
         </div>
-        <form action={logout}>
-          <button className="text-xs text-muted hover:text-accent">Wyloguj</button>
-        </form>
+        <div className="flex items-center gap-3">
+          <PushToggle />
+          <form action={logout}>
+            <button className="text-xs text-muted hover:text-accent">Wyloguj</button>
+          </form>
+        </div>
       </header>
 
       {error && (
@@ -91,7 +94,6 @@ export default async function TodayPage() {
         {scams && <CategoryCard report={scams} href="/scamy" />}
       </div>
 
-      <PushToggle />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usunSubskrypcje, wyslijTest, zapiszSubskrypcje } from "@/app/(app)/push-actions";
 
 const KLUCZ = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -36,11 +36,23 @@ function doZapisu(sub: PushSubscription) {
   return { endpoint: sub.endpoint, p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" };
 }
 
-// Włączanie powiadomień o nowych raportach (9:00 / 14:00 / 20:00) na tym urządzeniu
+// Dzwonek w nagłówku Dziś: 🔔 włączone / 🔕 wyłączone; po stuknięciu panel Włącz / Test / Wyłącz
 export function PushToggle() {
   const [stan, setStan] = useState<Stan>("ladowanie");
   const [zajety, setZajety] = useState(false);
   const [komunikat, setKomunikat] = useState<string | null>(null);
+  const [otwarte, setOtwarte] = useState(false);
+  const pole = useRef<HTMLDivElement>(null);
+
+  // Panel zamyka się po stuknięciu gdziekolwiek obok
+  useEffect(() => {
+    if (!otwarte) return;
+    const zamknij = (e: PointerEvent) => {
+      if (!pole.current?.contains(e.target as Node)) setOtwarte(false);
+    };
+    document.addEventListener("pointerdown", zamknij);
+    return () => document.removeEventListener("pointerdown", zamknij);
+  }, [otwarte]);
 
   useEffect(() => {
     (async () => {
@@ -119,36 +131,48 @@ export function PushToggle() {
 
   if (stan === "ladowanie" || stan === "brak-klucza") return null;
 
+  const wlaczone = stan === "wlaczone";
   return (
-    <section className="card p-4 text-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-medium">🔔 Powiadomienia o raportach</div>
-          <div className="text-xs text-muted">
+    <div ref={pole} className="relative">
+      <button
+        onClick={() => setOtwarte((o) => !o)}
+        aria-expanded={otwarte}
+        aria-label={wlaczone ? "Powiadomienia włączone" : "Powiadomienia wyłączone"}
+        className={`flex h-9 w-9 items-center justify-center rounded-full border text-base transition-colors ${
+          wlaczone ? "border-accent/40 bg-accent/10" : "border-line opacity-70 hover:opacity-100"
+        }`}
+      >
+        {wlaczone ? "🔔" : "🔕"}
+      </button>
+
+      {otwarte && (
+        <div className="card absolute right-0 top-11 z-30 w-72 p-4 text-sm shadow-2xl shadow-black/60">
+          <div className="font-medium">Powiadomienia o raportach</div>
+          <p className="mt-0.5 text-xs text-muted">
             {stan === "wlaczone" && "Włączone na tym urządzeniu · 9:00, 14:00, 20:00"}
-            {stan === "wylaczone" && "Informacja na telefon, gdy nowy raport jest gotowy"}
+            {stan === "wylaczone" && "Informacja na to urządzenie, gdy nowy raport jest gotowy"}
             {stan === "zablokowane" && "Zablokowane — włącz je w ustawieniach telefonu/przeglądarki dla tej apki"}
             {stan === "nieobslugiwane" && "Ta przeglądarka nie obsługuje powiadomień"}
             {stan === "ios-bez-ikony" && "Na iPhonie: Udostępnij → „Do ekranu początkowego”, potem otwórz apkę z ikony"}
-          </div>
+          </p>
+          {stan === "wylaczone" && (
+            <button onClick={wlacz} disabled={zajety} className={`${PRZYCISK} mt-3 text-accent`}>
+              Włącz
+            </button>
+          )}
+          {wlaczone && (
+            <div className="mt-3 flex gap-2">
+              <button onClick={test} disabled={zajety} className={`${PRZYCISK} text-accent`}>
+                Wyślij test
+              </button>
+              <button onClick={wylacz} disabled={zajety} className={`${PRZYCISK} text-muted`}>
+                Wyłącz
+              </button>
+            </div>
+          )}
+          {komunikat && <p className="mt-2 text-xs text-muted">{komunikat}</p>}
         </div>
-        {stan === "wylaczone" && (
-          <button onClick={wlacz} disabled={zajety} className={`${PRZYCISK} shrink-0 text-accent`}>
-            Włącz
-          </button>
-        )}
-        {stan === "wlaczone" && (
-          <div className="flex shrink-0 gap-2">
-            <button onClick={test} disabled={zajety} className={`${PRZYCISK} text-accent`}>
-              Test
-            </button>
-            <button onClick={wylacz} disabled={zajety} className={`${PRZYCISK} text-muted`}>
-              Wyłącz
-            </button>
-          </div>
-        )}
-      </div>
-      {komunikat && <p className="mt-2 text-xs text-muted">{komunikat}</p>}
-    </section>
+      )}
+    </div>
   );
 }
