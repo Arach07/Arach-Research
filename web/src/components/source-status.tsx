@@ -54,8 +54,10 @@ export function SourceStatus({ newest, problemy }: { newest?: string; problemy?:
 
 // Wynik kontroli liczb z komentarza AI: zielony znaczek albo lista liczb, których nie ma w danych
 export function NumberCheck({ kontrola }: { kontrola?: Kontrola | null }) {
-  if (!kontrola || kontrola.sprawdzone === 0) return null;
-  if (!kontrola.niezgodne.length) {
+  if (!kontrola) return null;
+  const czas = kontrola.czas ?? [];
+  if (kontrola.sprawdzone === 0 && !czas.length) return null;
+  if (!kontrola.niezgodne.length && !czas.length) {
     return (
       <p className="mt-3 text-xs text-muted">
         <span className="text-up">✓</span> Liczby w komentarzu sprawdzone automatycznie: {kontrola.zgodne} z{" "}
@@ -66,9 +68,21 @@ export function NumberCheck({ kontrola }: { kontrola?: Kontrola | null }) {
   return (
     <details className="mt-3 rounded-xl border border-accent/40 bg-accent/[0.06] px-3 py-2 text-xs">
       <summary className="cursor-pointer font-medium text-accent">
-        ⚠️ {kontrola.niezgodne.length} z {kontrola.sprawdzone} liczb w komentarzu AI nie zgadza się z danymi
+        ⚠️{" "}
+        {[
+          kontrola.niezgodne.length ? `${kontrola.niezgodne.length} z ${kontrola.sprawdzone} liczb nie zgadza się z danymi` : "",
+          czas.length ? `${czas.length}× AI myli stan sesji` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </summary>
       <ul className="mt-2 space-y-2 text-muted">
+        {czas.map((c, i) => (
+          <li key={`c${i}`}>
+            <span className="font-semibold text-foreground">Stan sesji</span> — {c.powod}
+            <div className="mt-0.5 italic">„…{c.fragment}…”</div>
+          </li>
+        ))}
         {kontrola.niezgodne.map((n, i) => (
           <li key={i}>
             <span className="tabular font-semibold text-foreground">{n.liczba}</span> — {n.powod}
@@ -76,7 +90,7 @@ export function NumberCheck({ kontrola }: { kontrola?: Kontrola | null }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-muted">Pewne są kursy w kafelkach i wykresach (prosto z API), nie ta liczba w tekście.</p>
+      <p className="mt-2 text-muted">Pewne są kursy w kafelkach i „Stan rynków” (prosto z danych), a nie to zdanie w tekście.</p>
     </details>
   );
 }

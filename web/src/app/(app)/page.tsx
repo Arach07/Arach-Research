@@ -36,7 +36,8 @@ export default async function TodayPage() {
           </h1>
           {newest && (
             <p className="text-sm text-muted">
-              {typ ? `${typ.ikona} ${typ.nazwa}` : "Komentarze z raportu"} · {formatDateTime(newest)}
+              {typ ? `${typ.ikona} ${typ.nazwa}` : "Komentarze z raportu"}
+              <span className="block text-xs">{formatDateTime(newest)}</span>
             </p>
           )}
         </div>

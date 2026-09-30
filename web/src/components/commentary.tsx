@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 
 // Zamienia "[3]" w tekście AI na klikalny przypis prowadzący do newsa nr 3 na liście źródeł
-function withCitations(text: string, keyPrefix: string, citations: boolean): ReactNode[] {
+function withCitations(raw: string, keyPrefix: string, citations: boolean): ReactNode[] {
+  // Starsze raporty: "[1, 3]" → "[1][3]", pseudo-przypisy bez numeru ("[dane własne]") znikają
+  const text = raw
+    .replace(/\[(\d+(?:\s*,\s*\d+)+)\]/g, (_, lista: string) => lista.split(",").map((n) => `[${n.trim()}]`).join(""))
+    .replace(/\s*\[(?!\d+\])[^\]\n]{1,40}\]/g, "");
   if (!citations) return [text.replace(/\s*\[\d+\]/g, "")];
   return text.split(/(\[\d+\])/g).map((part, i) => {
     const match = part.match(/^\[(\d+)\]$/);

@@ -83,6 +83,8 @@ export type Kontrola = {
   sprawdzone: number;
   zgodne: number;
   niezgodne: { liczba: string; fragment: string; powod: string }[];
+  // Zdania, w których AI pisze o sesji niezgodnie ze stanem rynków (np. "zakończył sesję", gdy trwa)
+  czas?: { fragment: string; powod: string }[];
 };
 
 export type ReportData = {

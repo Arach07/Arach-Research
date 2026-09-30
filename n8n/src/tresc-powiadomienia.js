@@ -26,11 +26,14 @@ const odmiana = (n, jeden, kilka, wiele) =>
   n === 1 ? jeden : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? kilka : wiele;
 const pomysly = dzien.pomysly?.length ?? 0;
 const problemy = dzien.problemy?.length ?? 0;
-const niezgodne = raporty.reduce((s, r) => s + (r.data?.kontrola?.niezgodne?.length ?? 0), 0);
+const niezgodne = raporty.reduce(
+  (s, r) => s + (r.data?.kontrola?.niezgodne?.length ?? 0) + (r.data?.kontrola?.czas?.length ?? 0),
+  0,
+);
 const ostrzezenia = [
   dzien.komentarz ? '' : '⚠️ bez komentarza AI',
   problemy ? `⚠️ ${problemy} ${odmiana(problemy, 'źródło nie odpowiada', 'źródła nie odpowiadają', 'źródeł nie odpowiada')}` : '',
-  niezgodne ? `⚠️ ${niezgodne} ${odmiana(niezgodne, 'liczba', 'liczby', 'liczb')} AI do sprawdzenia` : '',
+  niezgodne ? `⚠️ ${niezgodne} ${odmiana(niezgodne, 'uwaga', 'uwagi', 'uwag')} do komentarza AI` : '',
 ];
 const KROTKO = { WIG20: 'WIG20', 'S&P 500': 'S&P', Bitcoin: 'BTC' };
 const rynek = (klucz, fn) =>

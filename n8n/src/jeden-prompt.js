@@ -4,6 +4,16 @@
 
 const tematy = $input.all().map((item) => item.json);
 const typ = tematy[0]?.typRaportu;
+// Wprost dla każdego rynku: jakiego czasu używać (AI lubi pisać "zakończył sesję", gdy sesja jeszcze trwa)
+const JAK_PISAC = {
+  trwa: (r) => `${r.rynek}: sesja TRWA — pisz "w trakcie sesji", "rośnie/spada"; NIE pisz, że ${r.rynek} "zakończył(a) sesję" ani "na zamknięciu".`,
+  zamknieta: (r) => `${r.rynek}: dzisiejsza sesja ZAMKNIĘTA — pisz "zakończył(a) sesję", to wynik ostateczny dnia.`,
+  przed: (r) => `${r.rynek}: dziś sesja jeszcze się NIE zaczęła — liczby są z poprzedniej sesji; pisz np. "na wtorkowym zamknięciu", NIE "dziś".`,
+  poprzednia: (r) => `${r.rynek}: dziś nie ma sesji — liczby są z ostatniej sesji; podaj jej dzień, NIE pisz "dziś".`,
+};
+const zasadyCzasu = (tematy[0]?.stanRynkow ?? [])
+  .filter((r) => ['GPW', 'USA'].includes(r.rynek) && JAK_PISAC[r.status])
+  .map((r) => JAK_PISAC[r.status](r));
 const weekend = typ?.kod === 'sobota' || typ?.kod === 'niedziela';
 
 const sekcje = tematy.map(
@@ -26,7 +36,10 @@ return [
 
 STAN RYNKÓW w chwili raportu (obowiązuje we WSZYSTKICH tematach):
 ${(tematy[0]?.stanTekst ?? []).map((l) => '- ' + l).join('\n')}
-Pisz zgodnie ze stanem rynków: o sesji zamkniętej jako o wyniku ("GPW zakończyła sesję wzrostem…", "wczorajsza sesja w USA…"), o sesji trwającej jako o sytuacji w trakcie ("w trakcie sesji…"), a przy danych z poprzedniej sesji podaj, z którego dnia są. Nigdy nie pisz o wczorajszej sesji tak, jakby była dzisiejsza.${
+JAK PISAĆ O RYNKACH (obowiązkowo):
+${zasadyCzasu.map((l) => '- ' + l).join('\n')}
+- Krypto (Bitcoin, Ethereum) handluje się bez przerwy — nie pisz przy nich o "sesji".
+- Przy liczbach z TWARDYCH DANYCH nie dopisuj źródła w nawiasie (żadnych "[dane]", "[twarde dane]") — nawiasy kwadratowe tylko z numerem newsa, np. [3].${
         weekend
           ? '\nWeekend: giełdy nie działają (poza krypto). W komentarzach do tematów pisz o minionym tygodniu i zmianach tygodniowych, a nie o "dzisiejszej sesji".'
           : ''

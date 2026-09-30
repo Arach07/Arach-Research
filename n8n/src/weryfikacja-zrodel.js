@@ -167,6 +167,43 @@ function kontrolaLiczb(komentarz) {
   return { sprawdzone, zgodne: sprawdzone - niezgodne.length, niezgodne };
 }
 
+// Przypisy: "[1, 3]" → "[1][3]" (apka robi z nich klikalne kółka), a pseudo-przypisy bez numeru
+// ("[dane własne]", "[twarde dane]", "[NBP]") usuwamy — to nie są źródła, tylko szum w tekście.
+function uporzadkujPrzypisy(tekst) {
+  return tekst
+    .replace(/\[(\d+(?:\s*,\s*\d+)+)\]/g, (_, lista) => lista.split(',').map((n) => `[${n.trim()}]`).join(''))
+    .replace(/\s*\[(?!\d+\])[^\]\n]{1,40}\]/g, '');
+}
+
+// ---------- Kontrola czasu: czy AI pisze o sesji zgodnie ze stanem rynków ----------
+// Np. "WIG20 zakończył sesję wzrostem" w raporcie o 15:00, gdy sesja GPW jeszcze trwa.
+// Sprawdzamy fragmenty zdań (do przecinka/średnika), w których pada nazwa rynku.
+const RYNKI_CZASU = {
+  GPW: /\bGPW\b|WIG20|\bWIG\b|warszawsk|polsk\w* giełd|polsk\w* parkiet/i,
+  USA: /S&P|Nasdaq|Dow Jones|Wall Street|w USA|amerykańsk\w* (giełd|rynk|sesj|indeks|akcj)/i,
+};
+const ZAMKNIECIE = /zakończ|zamkn(ął|ęła|ęły|ęli)|na zamknięciu|zamknięci[ea] sesji/i;
+const DZIS_W_TRAKCIE = /w trakcie (dzisiejszej )?sesji|dzisiejsz\w* sesj|dziś (rośnie|spada|zyskuje|traci)/i;
+function kontrolaCzasu(komentarz, stan) {
+  if (!komentarz || !stan?.length) return [];
+  const statusy = Object.fromEntries(stan.map((s) => [s.rynek, s.status]));
+  const uwagi = [];
+  for (const fragment of komentarz.split(/\n|[.;](?=\s)|,\s|\s–\s|\spodczas gdy\s/)) {
+    for (const [rynek, re] of Object.entries(RYNKI_CZASU)) {
+      if (!re.test(fragment)) continue;
+      // Fragment o obu rynkach naraz jest niejednoznaczny — pomijamy
+      if (Object.entries(RYNKI_CZASU).some(([inny, re2]) => inny !== rynek && re2.test(fragment))) continue;
+      const status = statusy[rynek];
+      let powod = null;
+      if (status === 'trwa' && ZAMKNIECIE.test(fragment)) powod = `AI pisze o zamknięciu sesji, a sesja ${rynek} jeszcze trwa`;
+      if ((status === 'przed' || status === 'poprzednia') && DZIS_W_TRAKCIE.test(fragment))
+        powod = `AI pisze o dzisiejszej sesji ${rynek}, a dane są z poprzedniej sesji`;
+      if (powod) uwagi.push({ fragment: fragment.trim().slice(0, 140), powod });
+    }
+  }
+  return uwagi;
+}
+
 // Pomysły z podsumowania dnia (sekcja "Pomysły do rozważenia"), osobno — apka liczy ich wyniki.
 // Strzałka na początku: ↑ szansa na wzrost, ↓ ostrzeżenie przed spadkiem (bez strzałki = ↑).
 // Ta sama logika jest w apce (web/src/lib/pomysly.ts) dla starszych raportów.
@@ -190,7 +227,7 @@ const wyniki = $('Dane i tematy').all().map((item, i) => {
   const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];
 
   const surowy = komentarze[temat.category];
-  const komentarz = (typeof surowy === 'string' ? surowy : '').trim() || null;
+  const komentarz = uporzadkujPrzypisy((typeof surowy === 'string' ? surowy : '').trim()) || null;
   const numery = new Set([...(komentarz ?? '').matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
   const zNumerami = newsy.map((n) => ({
     nr: n.nr,
@@ -235,7 +272,7 @@ const wyniki = $('Dane i tematy').all().map((item, i) => {
         // Jaki to raport (przed sesją / po GPW / po USA / sobota / niedziela) i co jest już pewne
         typRaportu: temat.typRaportu ?? null,
         stanRynkow: temat.stanRynkow ?? [],
-        kontrola: kontrolaLiczb(komentarz),
+        kontrola: kontrolaLiczb(komentarz) && { ...kontrolaLiczb(komentarz), czas: kontrolaCzasu(komentarz, temat.stanRynkow) },
         ...(temat.category === 'dzien' && komentarz ? { pomysly: pomyslyZKomentarza(komentarz) } : {}),
         instrumenty: temat.instrumenty,
         newsy: zNumerami,
