@@ -1,8 +1,6 @@
 import type { Kontrola, Problem } from "@/lib/reports";
-import { hoursSince } from "@/lib/format";
-
-// n8n robi raporty o 9:00, 14:00 i 20:00 — najdłuższa przerwa to noc (13 h)
-const MAX_HOURS_WITHOUT_REPORT = 14;
+import { formatDateTime } from "@/lib/format";
+import { ostatniPlanowanyRaport } from "@/lib/harmonogram";
 
 function Warning({ children }: { children: React.ReactNode }) {
   return (
@@ -17,18 +15,19 @@ function Warning({ children }: { children: React.ReactNode }) {
 
 // Ostrzeżenia o stanie danych: brak nowego raportu (n8n nie działa?) i źródła, które nie odpowiedziały
 export function SourceStatus({ newest, problemy }: { newest?: string; problemy?: Problem[] }) {
-  const hours = newest ? hoursSince(newest) : 0;
-  const stale = hours > MAX_HOURS_WITHOUT_REPORT;
+  // Czy przyszedł raport, który według harmonogramu powinien już być (z 5 min tolerancji na zegar)
+  const planowany = ostatniPlanowanyRaport();
+  const stale = Boolean(newest && planowany && new Date(newest).getTime() < planowany - 5 * 60 * 1000);
   if (!stale && !problemy?.length) return null;
 
   return (
     <div className="space-y-2">
       {stale && (
         <Warning>
-          <p className="font-medium text-accent">Brak nowego raportu od {Math.floor(hours)} godz.</p>
+          <p className="font-medium text-accent">Brak raportu z {formatDateTime(new Date(planowany!).toISOString())}</p>
           <p className="text-muted">
-            n8n zwykle zapisuje raport o 9:00, 14:00 i 20:00. Sprawdź, czy komputer z n8n jest włączony, a okno n8n
-            otwarte.
+            n8n robi raporty pn–pt o 8:30, 17:15 i 22:15, w sobotę o 10:00 i w niedzielę o 18:00. Sprawdź, czy komputer z
+            n8n jest włączony, a okno n8n otwarte.
           </p>
         </Warning>
       )}

@@ -110,7 +110,8 @@ export type Report = {
   created_at: string;
   category: string;
   title: string;
-  content: string;
+  // Pełny tekst (dla archiwum i starszych raportów) — lista najnowszych raportów go nie pobiera
+  content?: string;
   data: ReportData | null;
 };
 
@@ -134,30 +135,33 @@ export function categoryMeta(category: string) {
   return CATEGORIES[category] ?? { label: category, icon: "📄" };
 }
 
-// Najnowsze raporty (2 ostatnie uruchomienia n8n po 9 tematów) — wystarczy, by mieć najnowszy z każdej kategorii
-export async function recentReports(limit = 20) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("reports")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(limit)
-    .returns<Report[]>();
-  return { reports: data ?? [], error: error?.message ?? null };
-}
+// Najnowszy raport z każdej z podanych kategorii. Jedno uruchomienie n8n zapisuje wszystkie tematy naraz,
+// więc zwykle wystarcza tyle wierszy, ile kategorii (bez pełnego tekstu "content" — apka go tu nie używa).
+// Gdy któregoś tematu brakuje w ostatnim uruchomieniu, dociągamy go osobno.
+const LIST_COLUMNS = "id, created_at, category, title, data";
 
-// Najnowszy raport z każdej z podanych kategorii — jedno lekkie zapytanie zamiast wielu pełnych raportów
 export async function latestReports(categories: string[]) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("reports")
-    .select("*")
+    .select(LIST_COLUMNS)
     .in("category", categories)
     .order("created_at", { ascending: false })
-    // Jedno uruchomienie n8n zapisuje po 1 raporcie na temat, więc 2× zapas wystarcza
-    .limit(categories.length * 2)
+    .limit(categories.length)
     .returns<Report[]>();
-  return { latest: latestByCategory(data ?? []), error: error?.message ?? null };
+  const latest = latestByCategory(data ?? []);
+  const missing = categories.filter((c) => !latest[c]);
+  if (!error && missing.length) {
+    const { data: rest } = await supabase
+      .from("reports")
+      .select(LIST_COLUMNS)
+      .in("category", missing)
+      .order("created_at", { ascending: false })
+      .limit(missing.length * 3)
+      .returns<Report[]>();
+    for (const r of rest ?? []) latest[r.category] ??= r;
+  }
+  return { latest, error: error?.message ?? null };
 }
 
 // Najnowszy raport dla każdej kategorii
@@ -249,5 +253,5 @@ export function teaser(report: Report | ReportSummary) {
   if (!("data" in report)) return "Komentarz AI niedostępny — otwórz raport, żeby zobaczyć dane i newsy.";
   const news = report.data?.newsy?.[0];
   if (news) return news.tytul;
-  return report.content.split("\n").find((l) => l.trim())?.replace(/^-\s*/, "") ?? "";
+  return (report.content ?? "").split("\n").find((l) => l.trim())?.replace(/^-\s*/, "") ?? "";
 }

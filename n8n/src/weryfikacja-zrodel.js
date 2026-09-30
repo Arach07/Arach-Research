@@ -3,11 +3,18 @@
 // - data: uporządkowane dane (instrumenty z wykresami, newsy, komentarz) — z tego rysuje apka.
 // Gdy Gemini nie odpowie (np. limit), raport i tak powstaje — z danymi i nagłówkami newsów.
 
-const certTxt = await this.helpers.httpRequest({
-  url: 'https://hole.cert.pl/domains/v2/domains.txt',
-  timeout: 30000,
-});
-const cert = new Set(certTxt.split('\n').map((s) => s.trim().toLowerCase()).filter(Boolean));
+// Gdy lista CERT nie odpowie, raport i tak powstaje (linki bez sprawdzenia) — z ostrzeżeniem w apce
+let cert = new Set();
+let problemCert = null;
+try {
+  const certTxt = await this.helpers.httpRequest({
+    url: 'https://hole.cert.pl/domains/v2/domains.txt',
+    timeout: 30000,
+  });
+  cert = new Set(certTxt.split('\n').map((s) => s.trim().toLowerCase()).filter(Boolean));
+} catch (e) {
+  problemCert = { zrodlo: 'Lista CERT Polska (sprawdzanie linków)', blad: String(e.message ?? e).slice(0, 160) };
+}
 
 // "sub.bankier.pl" -> sprawdza sub.bankier.pl, bankier.pl
 function naLiscieCert(domena) {
@@ -229,6 +236,7 @@ const wyniki = $('Dane i tematy').all().map((item, i) => {
   const surowy = komentarze[temat.category];
   const komentarz = uporzadkujPrzypisy((typeof surowy === 'string' ? surowy : '').trim()) || null;
   const numery = new Set([...(komentarz ?? '').matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
+  const kontrola = kontrolaLiczb(komentarz);
   const zNumerami = newsy.map((n) => ({
     nr: n.nr,
     tytul: n.tytul,
@@ -268,11 +276,15 @@ const wyniki = $('Dane i tematy').all().map((item, i) => {
         wersja: 2,
         komentarz,
         // Źródła, które nie odpowiedziały w tym uruchomieniu (te same dla wszystkich tematów)
-        problemy: temat.problemy ?? [],
+        // (bez dublowania, gdy lista CERT nie odpowiedziała już w "Dane i tematy")
+        problemy: [
+          ...(temat.problemy ?? []),
+          ...(problemCert && !(temat.problemy ?? []).some((p) => p.zrodlo.startsWith('Lista CERT')) ? [problemCert] : []),
+        ],
         // Jaki to raport (przed sesją / po GPW / po USA / sobota / niedziela) i co jest już pewne
         typRaportu: temat.typRaportu ?? null,
         stanRynkow: temat.stanRynkow ?? [],
-        kontrola: kontrolaLiczb(komentarz) && { ...kontrolaLiczb(komentarz), czas: kontrolaCzasu(komentarz, temat.stanRynkow) },
+        kontrola: kontrola && { ...kontrola, czas: kontrolaCzasu(komentarz, temat.stanRynkow) },
         ...(temat.category === 'dzien' && komentarz ? { pomysly: pomyslyZKomentarza(komentarz) } : {}),
         instrumenty: temat.instrumenty,
         newsy: zNumerami,

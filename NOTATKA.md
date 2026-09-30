@@ -159,6 +159,12 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 - **Wyniki pomysłów** (`/pomysly`, link pod podsumowaniem dnia): raport dnia zapisuje migawkę cen (`ceny`) i listę pomysłów (`pomysly`, strzałka ↑ szansa / ↓ ostrzeżenie). Apka liczy zmianę do dziś, po 7 i po 30 dniach, na tle WIG20 lub S&P 500. Ten sam pomysł powtórzony w ciągu 3 dni liczy się raz. Obliczenia: `web/src/lib/pomysly-wyniki.ts`.
 - **Sprzątanie:** podsumowania dnia są trzymane 180 dni (potrzebne do wyników po 30 dniach), reszta 30 dni. Nowy `supabase/cleanup.sql` uruchomiony 30.09 ✅.
 
+### ✅ Kamień milowy 30.09.2026 — pełny przegląd kodu i danych
+- Dane sprawdzone ze źródłami: 34 kursy zgodne z Yahoo/NBP (różnice 0,00–0,18% = ruch cen w kilka minut), zmiany dzienne przeliczone niezależnie się zgadzają, NBP co do grosza.
+- Kontrola AI na 22 raportach z historii: 938 liczb, 0 fałszywych alarmów, 4 prawdziwe błędy AI złapane; kontrola stanu sesji łapie „zakończył sesję”, gdy sesja trwa.
+- Poprawione przy przeglądzie: kalendarz dla AI tylko z przyszłymi wydarzeniami, opis szerokości rynku (spółki USA + GPW), raport zapisuje się nawet gdy lista CERT nie odpowie, ostrzeżenie „brak raportu” według harmonogramu (bez fałszywych alarmów w weekend), lżejsze zapytania (bez pełnego tekstu), porządek w przypisach.
+- Znane ryzyka: n8n działa na komputerze w pracy (wyłączenie/restart = brak raportów; apka ostrzeże), Yahoo i Forex Factory to nieoficjalne źródła (mogą zablokować — apka pokaże „nie odpowiada”), pamięć tygodnia n8n zapisuje się tylko przy automatycznych raportach.
+
 ### Harmonogram i stan rynków (od 30.09)
 - **Pn–pt:** 🌅 8:30 *Przed sesją* (pełna wczorajsza sesja USA, plan dnia) · 🇵🇱 17:15 *Po sesji GPW* (pełny dzień w PL, NBP, dane z USA z 14:30/16:00, start Wall Street) · 🇺🇸 22:15 *Po sesji w USA* (pełny dzień w USA).
 - **Sobota 10:00 📆 Podsumowanie tygodnia:** zmiany tygodniowe, spółki tygodnia, wyniki pomysłów i kontrola AI z całego tygodnia (pamięć n8n: `pomysly`, `statystyki`, zapisuje je klocek Weryfikacja przy automatycznych raportach).

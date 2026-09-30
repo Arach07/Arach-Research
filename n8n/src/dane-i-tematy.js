@@ -460,7 +460,7 @@ const szerokosc = {
   nadTydzienTemu: zTrendem.filter((s) => s.nadTrendemTydzienTemu).length,
 };
 const sygnaly = [
-  `Szerokość rynku: ${szerokosc.nad} z ${szerokosc.wszystkie} spółek nad średnią 200 dni (tydzień temu ${szerokosc.nadTydzienTemu})`,
+  `Szerokość rynku (${szerokosc.wszystkie} śledzonych dużych spółek z USA i GPW razem): ${szerokosc.nad} nad średnią 200 dni (tydzień temu ${szerokosc.nadTydzienTemu})`,
   ...zDanymi.filter((s) => s.rsi != null && s.rsi <= 30).map((s) => `${s.nazwa}: RSI ${Math.round(s.rsi)} — wyprzedana`),
   ...zDanymi.filter((s) => s.rsi != null && s.rsi >= 70).map((s) => `${s.nazwa}: RSI ${Math.round(s.rsi)} — wykupiona`),
   ...zDanymi
@@ -601,7 +601,12 @@ for (let i = 0; i < 14; i++) {
   }
 }
 wydarzenia.sort((a, b) => a.data.localeCompare(b.data));
-const kalendarzTekst = wydarzenia.slice(0, 25).map(
+// Dla AI tylko wydarzenia, które jeszcze się nie odbyły — inaczej trafiały do "Co przed nami"
+// (dzisiejsze, już opublikowane dane są w STANIE RYNKÓW). Apka (Rynki → Kalendarz) dostaje pełną listę.
+const przyszleWydarzenia = wydarzenia.filter((w) =>
+  w.caly_dzien ? dzienW(new Date(w.data).getTime()) >= dzienW(Date.now()) : new Date(w.data).getTime() > Date.now(),
+);
+const kalendarzTekst = przyszleWydarzenia.slice(0, 25).map(
   (w) =>
     `${new Date(w.data).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', weekday: 'short', day: '2-digit', month: '2-digit', ...(w.caly_dzien ? {} : { hour: '2-digit', minute: '2-digit' }) })} ${w.kraj}: ${w.nazwa} (ważność: ${w.waznosc}${w.prognoza ? `, prognoza ${w.prognoza}` : ''}${w.poprzednio ? `, poprzednio ${w.poprzednio}` : ''})`,
 );
@@ -1043,7 +1048,7 @@ tematy.push({
         }
       : {}),
     // Niedziela: ile ważnych wydarzeń i wyników spółek w nadchodzącym tygodniu (do powiadomienia)
-    ...(kodTypu === 'niedziela' ? { przedTygodniem: { wydarzenia: wydarzenia.length, wyniki: wynikiWTygodniu.length } } : {}),
+    ...(kodTypu === 'niedziela' ? { przedTygodniem: { wydarzenia: przyszleWydarzenia.length, wyniki: wynikiWTygodniu.length } } : {}),
   },
   prompt: wariant.prompt,
 });

@@ -83,7 +83,7 @@ export function BreadthCard({ fromReport }: { fromReport?: Szerokosc }) {
   const total = live.length || fromReport?.wszystkie || 0;
   if (!total) return null;
   const percent = Math.round((above / total) * 100);
-  const weekAgo = fromReport ? Math.round((fromReport.nadTydzienTemu / fromReport.wszystkie) * 100) : null;
+  const weekAgo = fromReport?.wszystkie ? Math.round((fromReport.nadTydzienTemu / fromReport.wszystkie) * 100) : null;
   return (
     <div className="card p-4">
       <div className="text-xs text-muted">📊 Nastrój wśród {total} spółek</div>

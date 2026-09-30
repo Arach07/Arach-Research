@@ -27,7 +27,7 @@ export function ReportView({ report, live = false }: { report: Report; live?: bo
   if (!data?.wersja) {
     return (
       <article className="card p-5">
-        <ReportContent text={report.content} />
+        <ReportContent text={report.content ?? ""} />
       </article>
     );
   }

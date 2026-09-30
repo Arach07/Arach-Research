@@ -69,8 +69,17 @@ export function PushToggle() {
         const rejestracja = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
         const sub = await rejestracja.pushManager.getSubscription();
         if (sub) {
-          // Odświeżamy wpis w bazie (np. po wyczyszczeniu danych lub zmianie kluczy przeglądarki)
-          await zapiszSubskrypcje(doZapisu(sub), urzadzenie());
+          // Odświeżamy wpis w bazie (np. po wyczyszczeniu danych) — raz na sesję, nie przy każdym wejściu
+          let zsynchronizowane = false;
+          try {
+            zsynchronizowane = sessionStorage.getItem("push-sync") === sub.endpoint;
+          } catch {}
+          if (!zsynchronizowane) {
+            await zapiszSubskrypcje(doZapisu(sub), urzadzenie());
+            try {
+              sessionStorage.setItem("push-sync", sub.endpoint);
+            } catch {}
+          }
           return setStan("wlaczone");
         }
         setStan(Notification.permission === "denied" ? "zablokowane" : "wylaczone");
