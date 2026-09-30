@@ -157,7 +157,7 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 - **Stan źródeł:** n8n zapisuje w każdym raporcie `problemy`, czyli źródła, które nie odpowiedziały (API, kanały RSS, kalendarz, CERT). Dziś pokazuje wtedy złote ostrzeżenie. Drugie ostrzeżenie pojawia się, gdy nowego raportu nie ma od ponad 14 godzin (n8n nie działa?). Kod: `zglos()` w `dane-i-tematy.js`, komponent `web/src/components/source-status.tsx`.
 - **Kontrola liczb AI:** klocek Weryfikacja sprawdza każdą liczbę z komentarza z danymi i newsami (także kierunek: „wzrost” przy spadku). Wynik jest pod komentarzem: ✓ albo lista niezgodnych liczb. Test na 21 raportach z historii: 513 liczb, 0 fałszywych alarmów, złapane 3 prawdziwe błędy AI („ASML +329%” zamiast 3,29%). Ograniczenie: wymyślona liczba, która przypadkiem pasuje do innej z danych, przejdzie.
 - **Wyniki pomysłów** (`/pomysly`, link pod podsumowaniem dnia): raport dnia zapisuje migawkę cen (`ceny`) i listę pomysłów (`pomysly`, strzałka ↑ szansa / ↓ ostrzeżenie). Apka liczy zmianę do dziś, po 7 i po 30 dniach, na tle WIG20 lub S&P 500. Ten sam pomysł powtórzony w ciągu 3 dni liczy się raz. Obliczenia: `web/src/lib/pomysly-wyniki.ts`.
-- **Sprzątanie:** podsumowania dnia są trzymane 180 dni (potrzebne do wyników po 30 dniach), reszta 30 dni. **Trzeba raz uruchomić nowy `supabase/cleanup.sql`.**
+- **Sprzątanie:** podsumowania dnia są trzymane 180 dni (potrzebne do wyników po 30 dniach), reszta 30 dni. Nowy `supabase/cleanup.sql` uruchomiony 30.09 ✅.
 
 ---
 
