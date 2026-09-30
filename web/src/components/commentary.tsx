@@ -30,6 +30,19 @@ const SECTIONS: Record<string, string> = {
   "rekomendacje dnia": "📈",
   "pomysły do rozważenia": "💡",
   ryzyka: "⚠️",
+  // Sobota: podsumowanie tygodnia
+  "tydzień w skrócie": "🗞️",
+  "rynki w tym tygodniu": "📈",
+  "spółki tygodnia": "🏢",
+  "najważniejsze wydarzenia": "📰",
+  "wyniki pomysłów": "🎯",
+  "kontrola jakości": "🔍",
+  "co dalej": "➡️",
+  // Niedziela: przed tygodniem
+  "weekend w skrócie": "🗞️",
+  "kalendarz tygodnia": "📅",
+  "wyniki spółek": "📊",
+  "na co uważać": "👀",
 };
 
 type Block =

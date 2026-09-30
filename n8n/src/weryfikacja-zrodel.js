@@ -184,7 +184,7 @@ function pomyslyZKomentarza(komentarz) {
   return pomysly;
 }
 
-return $('Dane i tematy').all().map((item, i) => {
+const wyniki = $('Dane i tematy').all().map((item, i) => {
   const temat = item.json;
   const newsy = temat.newsy.filter((n) => !naLiscieCert(n.domena));
   const odrzucone = [...new Set(temat.newsy.filter((n) => naLiscieCert(n.domena)).map((n) => n.domena))];
@@ -232,6 +232,9 @@ return $('Dane i tematy').all().map((item, i) => {
         komentarz,
         // Źródła, które nie odpowiedziały w tym uruchomieniu (te same dla wszystkich tematów)
         problemy: temat.problemy ?? [],
+        // Jaki to raport (przed sesją / po GPW / po USA / sobota / niedziela) i co jest już pewne
+        typRaportu: temat.typRaportu ?? null,
+        stanRynkow: temat.stanRynkow ?? [],
         kontrola: kontrolaLiczb(komentarz),
         ...(temat.category === 'dzien' && komentarz ? { pomysly: pomyslyZKomentarza(komentarz) } : {}),
         instrumenty: temat.instrumenty,
@@ -252,3 +255,44 @@ return $('Dane i tematy').all().map((item, i) => {
     pairedItem: { item: i },
   };
 });
+
+// ---------- Pamięć tygodnia (do sobotniego podsumowania) ----------
+// Zapisuje się tylko przy automatycznych uruchomieniach (tak działa pamięć n8n) — ręczne testy jej nie psują.
+const pamiec = $getWorkflowStaticData('global');
+const DWA_TYGODNIE = 14 * 864e5;
+const swieze = (lista) => (lista ?? []).filter((x) => Date.now() - new Date(x.t).getTime() < DWA_TYGODNIE);
+const teraz = new Date().toISOString();
+const raportDnia = wyniki.find((w) => w.json.category === 'dzien')?.json.data;
+
+// Pomysły z ceną z chwili raportu; instrument = nazwa z migawki cen, która pada w tekście najwcześniej
+const ceny = raportDnia?.ceny ?? {};
+const wzorce = Object.keys(ceny).map((pelna) => {
+  const krotka = pelna.replace(/\s*\(.*\)$/, '');
+  const rdzen = (krotka.length >= 5 ? krotka.slice(0, -1) : krotka).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Polska odmiana: "Tesli", "Orlenu" — rdzeń + do 3 liter; krótkie nazwy (PZU, AMD) tylko w całości
+  const koniec = krotka.length >= 5 ? '[a-ząćęłńóśźż]{0,3}' : '';
+  return { pelna, re: new RegExp(`(^|[^a-ząćęłńóśźż0-9])${rdzen}${koniec}(?![a-ząćęłńóśźż])`, 'i') };
+});
+const czego = (tekst) =>
+  wzorce
+    .map((w) => ({ ...w, i: tekst.search(w.re) }))
+    .filter((w) => w.i >= 0)
+    .sort((a, b) => a.i - b.i)[0]?.pelna ?? null;
+const nowePomysly = (raportDnia?.pomysly ?? []).map((p) => {
+  const nazwa = czego(p.tekst);
+  return { t: teraz, tekst: p.tekst.slice(0, 200), kierunek: p.kierunek, nazwa, cena: nazwa ? ceny[nazwa] : null };
+});
+pamiec.pomysly = [...swieze(pamiec.pomysly), ...nowePomysly];
+
+const kontrole = wyniki.map((w) => w.json.data.kontrola).filter(Boolean);
+pamiec.statystyki = [
+  ...swieze(pamiec.statystyki),
+  {
+    t: teraz,
+    sprawdzone: kontrole.reduce((s, k) => s + k.sprawdzone, 0),
+    niezgodne: kontrole.reduce((s, k) => s + k.niezgodne.length, 0),
+    bezAI: !raportDnia?.komentarz,
+  },
+];
+
+return wyniki;

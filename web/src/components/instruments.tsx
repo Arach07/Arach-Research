@@ -4,6 +4,7 @@ import type { Instrument } from "@/lib/reports";
 import { formatNumber } from "@/lib/format";
 import { Change } from "./change";
 import { useLiveInstrument } from "./live-quotes";
+import { SessionBadge } from "./market-status";
 import { Sparkline } from "./sparkline";
 
 // Kursy aktualizują się same co 20 s (LiveQuotesProvider). Z live=false komponent pokazuje
@@ -32,6 +33,7 @@ function TickerItem({ instrument }: { instrument: Instrument }) {
       <div className="truncate text-[11px] text-muted">{i.nazwa}</div>
       <Value instrument={i} className="mt-0.5 block text-[15px]" />
       <Change value={i.d1 ?? null} className="mt-0.5 block text-[11px] font-semibold" />
+      <SessionBadge sesja={i.sesja} className="mt-0.5 block" />
     </div>
   );
 }
@@ -63,7 +65,10 @@ export function InstrumentPanel({ instrument: base, live = false }: { instrument
   return (
     <div className="card p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <div className="text-sm text-muted">{instrument.nazwa}</div>
+        <div className="flex items-baseline gap-2 text-sm text-muted">
+          {instrument.nazwa}
+          <SessionBadge sesja={instrument.sesja} />
+        </div>
         {instrument.zrodlo && (
           <a
             href={instrument.zrodlo}

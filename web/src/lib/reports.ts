@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Sesja } from "./sesja";
 
 // Kształt danych zapisywanych przez n8n (klocek "Weryfikacja źródeł", data.wersja = 2)
 export type Instrument = {
@@ -27,6 +28,19 @@ export type Instrument = {
   // Makro: grupa kafelka (stopy, waluty, surowce, nastroje, swiat) i opis po polsku
   grupa?: string;
   opisPl?: string;
+  // Czy sesja trwa, zamknęła się dziś (wynik ostateczny), czy kurs jest z poprzedniej sesji
+  sesja?: Sesja;
+};
+
+// Jaki to raport: przed sesją / po GPW / po USA / podsumowanie tygodnia (sobota) / przed tygodniem (niedziela)
+export type TypRaportu = { kod: string; nazwa: string; ikona: string };
+
+// Stan rynków w chwili raportu: co jest już pewne, a co jeszcze się zmieni
+export type StanRynku = {
+  rynek: string;
+  status: "trwa" | "zamknieta" | "dzis" | "przed" | "poprzednia" | "info" | "brak";
+  dzien?: string;
+  tekst: string;
 };
 
 export type Szerokosc = { nad: number; pod: number; wszystkie: number; nadTydzienTemu: number };
@@ -78,6 +92,8 @@ export type ReportData = {
   kontrola?: Kontrola | null;
   // Podsumowanie dnia: ceny z chwili raportu (do wyników pomysłów)
   ceny?: Record<string, number>;
+  typRaportu?: TypRaportu | null;
+  stanRynkow?: StanRynku[];
   instrumenty?: Instrument[];
   newsy?: News[];
   odrzucone?: string[];

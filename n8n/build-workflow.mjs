@@ -144,12 +144,21 @@ const workflow = {
       position: [0, -120],
     },
     {
-      // Codziennie o 9:00, 14:00 i 20:00 czasu polskiego (9:00 = po odnowieniu dziennego limitu Gemini)
+      // Czas polski. Pn–pt: 8:30 przed sesją, 17:15 po sesji GPW, 22:15 po sesji w USA.
+      // Sobota 10:00 podsumowanie tygodnia, niedziela 18:00 zapowiedź tygodnia (kalendarz na nowy tydzień).
       parameters: {
-        rule: { interval: [{ field: 'cronExpression', expression: '0 9,14,20 * * *' }] },
+        rule: {
+          interval: [
+            { field: 'cronExpression', expression: '30 8 * * 1-5' },
+            { field: 'cronExpression', expression: '15 17 * * 1-5' },
+            { field: 'cronExpression', expression: '15 22 * * 1-5' },
+            { field: 'cronExpression', expression: '0 10 * * 6' },
+            { field: 'cronExpression', expression: '0 18 * * 0' },
+          ],
+        },
       },
       id: id(9),
-      name: 'Harmonogram 9/14/20',
+      name: 'Harmonogram',
       type: 'n8n-nodes-base.scheduleTrigger',
       typeVersion: 1.2,
       position: [0, 120],
@@ -280,7 +289,7 @@ const workflow = {
   ],
   connections: {
     Start: { main: [[to('Dane i tematy')]] },
-    'Harmonogram 9/14/20': { main: [[to('Dane i tematy')]] },
+    Harmonogram: { main: [[to('Dane i tematy')]] },
     'Dane i tematy': { main: [[to('Jeden prompt')]] },
     'Jeden prompt': { main: [[to('Runda')]] },
     Runda: { main: [[to(MODELE[0].nazwa)]] },

@@ -6,6 +6,7 @@ import { Commentary } from "@/components/commentary";
 import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
+import { MarketStatus } from "@/components/market-status";
 import { PushToggle } from "@/components/push-toggle";
 import { NumberCheck, SourceStatus } from "@/components/source-status";
 import { formatDateTime } from "@/lib/format";
@@ -23,6 +24,8 @@ export default async function TodayPage() {
   const ticker =
     summary?.data?.instrumenty ?? markets.flatMap((r) => r.data?.instrumenty?.filter((i) => !i.blad).slice(0, 1) ?? []);
   const newest = reports[0]?.created_at;
+  const typ = summary?.data?.typRaportu;
+  const weekend = typ?.kod === "sobota" || typ?.kod === "niedziela";
 
   return (
     <div className="space-y-5">
@@ -31,7 +34,11 @@ export default async function TodayPage() {
           <h1 className="text-[26px] font-semibold tracking-tight">
             <span className="gold">Research</span>
           </h1>
-          {newest && <p className="text-sm text-muted">Komentarze z raportu: {formatDateTime(newest)}</p>}
+          {newest && (
+            <p className="text-sm text-muted">
+              {typ ? `${typ.ikona} ${typ.nazwa}` : "Komentarze z raportu"} · {formatDateTime(newest)}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <PushToggle />
@@ -52,6 +59,8 @@ export default async function TodayPage() {
         <EmptyState>Brak raportów. Odpal workflow w n8n, a pierwszy raport pojawi się tutaj.</EmptyState>
       )}
 
+      <MarketStatus stan={summary?.data?.stanRynkow} czas={summary?.created_at} />
+
       {ticker.length > 0 && (
         <div className="space-y-2">
           <LiveBadge />
@@ -62,7 +71,7 @@ export default async function TodayPage() {
       {summary && (
         <section className="card card-hero p-5">
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-            🧠 Podsumowanie dnia
+            {weekend && typ ? `${typ.ikona} ${typ.nazwa}` : "🧠 Podsumowanie dnia"}
           </h2>
           {summary.data?.komentarz ? (
             <>

@@ -13,7 +13,7 @@ Prywatna aplikacja (tylko dla mnie), która **3 razy dziennie** zbiera informacj
 złoto, GPW, rynek USA, krypto, ostrzeżenia przed scamami oraz podsumowanie dnia.
 
 ```
-[n8n: harmonogram 9:00 / 14:00 / 20:00]
+[n8n: pn–pt 8:30 / 17:15 / 22:15, sobota 10:00, niedziela 18:00]
    → pobiera twarde dane z API (NBP, Yahoo Finance, lista CERT Polska)
    → pobiera newsy z RSS 13 zaufanych portali
    → Gemini pisze komentarz TYLKO na podstawie tych danych, z numerami źródeł [1] [2]
@@ -158,6 +158,14 @@ Czarne tło ze złotą łuną u góry i ukośną fakturą, liczby w złotym grad
 - **Kontrola liczb AI:** klocek Weryfikacja sprawdza każdą liczbę z komentarza z danymi i newsami (także kierunek: „wzrost” przy spadku). Wynik jest pod komentarzem: ✓ albo lista niezgodnych liczb. Test na 21 raportach z historii: 513 liczb, 0 fałszywych alarmów, złapane 3 prawdziwe błędy AI („ASML +329%” zamiast 3,29%). Ograniczenie: wymyślona liczba, która przypadkiem pasuje do innej z danych, przejdzie.
 - **Wyniki pomysłów** (`/pomysly`, link pod podsumowaniem dnia): raport dnia zapisuje migawkę cen (`ceny`) i listę pomysłów (`pomysly`, strzałka ↑ szansa / ↓ ostrzeżenie). Apka liczy zmianę do dziś, po 7 i po 30 dniach, na tle WIG20 lub S&P 500. Ten sam pomysł powtórzony w ciągu 3 dni liczy się raz. Obliczenia: `web/src/lib/pomysly-wyniki.ts`.
 - **Sprzątanie:** podsumowania dnia są trzymane 180 dni (potrzebne do wyników po 30 dniach), reszta 30 dni. Nowy `supabase/cleanup.sql` uruchomiony 30.09 ✅.
+
+### Harmonogram i stan rynków (od 30.09)
+- **Pn–pt:** 🌅 8:30 *Przed sesją* (pełna wczorajsza sesja USA, plan dnia) · 🇵🇱 17:15 *Po sesji GPW* (pełny dzień w PL, NBP, dane z USA z 14:30/16:00, start Wall Street) · 🇺🇸 22:15 *Po sesji w USA* (pełny dzień w USA).
+- **Sobota 10:00 📆 Podsumowanie tygodnia:** zmiany tygodniowe, spółki tygodnia, wyniki pomysłów i kontrola AI z całego tygodnia (pamięć n8n: `pomysly`, `statystyki`, zapisuje je klocek Weryfikacja przy automatycznych raportach).
+- **Niedziela 18:00 🔭 Przed tygodniem:** kalendarz nowego tygodnia (Forex Factory liczy tydzień od niedzieli), wyniki spółek, krypto z weekendu, pomysły na tydzień.
+- **Stan rynków:** przy każdym kursie `sesja` (trwa / przed / zamknieta / poprzednia / dzis) liczona z danych Yahoo (godziny sesji, czas ostatniej transakcji) i NBP (data kursu) — święta i weekendy wychodzą same. Na Dziś blok „📌 Stan rynków” (✅ wynik ostateczny, 🟢 jeszcze się zmienia, ⏳ z poprzedniej sesji), plakietki przy kursach (na żywo), AI dostaje to samo w poleceniu. Powiadomienie: `S&P −0,2% (wt.)` przy danych z poprzedniej sesji.
+- Typ raportu wynika z godziny uruchomienia (ręczny test w tygodniu: przed 12 = przed sesją, 12–20 = po GPW, potem po USA).
+- Forex Factory blokuje (429) przy kilku pobraniach w krótkim czasie — dotyczy tylko szybkich ręcznych testów.
 
 ### Powiadomienia push (od 30.09)
 - Po zapisaniu raportu n8n wysyła na telefon: tytuł „Au ▲ 0,8%  ·  Ag ▲ 0,6%” (złoto i srebro), pod nim „from Research” (dopisuje iPhone, nie da się usunąć ani wstawić nad tytuł), potem „WIG20 +0,6% · S&P −0,2% · BTC +0,2%” i „💡 2 pomysły” (+ ostrzeżenia). Stuknięcie otwiera Dziś. Testowaliśmy dłuższe wersje (news, nazwy pomysłów) — iPhone je ucinał, prosta wygląda lepiej.

@@ -49,7 +49,15 @@ const opis = (i) =>
       (i.rsi != null ? ` | RSI(14): ${Math.round(i.rsi)}` : '') +
       (i.odSma200 != null ? ` | vs średnia 200 dni: ${fmtPct(i.odSma200)}` : '') +
       (i.odSma50 != null ? ` | vs średnia 50 dni: ${fmtPct(i.odSma50)}` : '') +
-      (i.opisPl ? ` | ${i.opisPl}` : '');
+      (i.opisPl ? ` | ${i.opisPl}` : '') +
+      (i.sesja ? ` | ${opisSesji(i.sesja)}` : '');
+// Dla AI przy każdym kursie: czy to wynik ostateczny, trwająca sesja czy dane z poprzedniej sesji
+function opisSesji(s) {
+  if (s.status === 'trwa') return 'sesja trwa (liczby się zmieniają)';
+  if (s.status === 'zamknieta') return 'dzisiejsza sesja zamknięta (wynik ostateczny)';
+  if (s.status === 'dzis') return 'dzisiejszy kurs NBP';
+  return `dane z sesji ${fmtDzien(s.dzien)}`;
+}
 
 // ---------- Analiza techniczna (liczona z historii kursów) ----------
 
@@ -92,6 +100,37 @@ function techniczne(seria) {
   };
 }
 
+// ---------- Status sesji (z danych Yahoo i NBP, bez godzin wpisanych na sztywno) ----------
+// trwa       = handel teraz, liczby jeszcze się zmienią
+// przed      = dzisiejsza sesja jeszcze się nie zaczęła — pokazujemy zamknięcie poprzedniej
+// zamknieta  = dzisiejsza sesja zakończona — wynik dnia jest ostateczny
+// poprzednia = dziś nie ma sesji (weekend, święto) — pokazujemy ostatnią sesję
+// dzis       = NBP opublikował już dzisiejszy kurs
+const TZ = 'Europe/Warsaw';
+const dzienW = (ms, tz = TZ) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: tz });
+function sesjaZMeta(m) {
+  const teraz = Date.now();
+  const tz = m.exchangeTimezoneName || TZ;
+  const okres = m.currentTradingPeriod?.regular;
+  const start = okres?.start ? okres.start * 1000 : null;
+  const koniec = okres?.end ? okres.end * 1000 : null;
+  const ostatnia = m.regularMarketTime ? m.regularMarketTime * 1000 : null;
+  const dzien = ostatnia ? dzienW(ostatnia, tz) : null;
+  let status;
+  // "trwa" tylko przy świeżej transakcji — w weekend Yahoo potrafi pokazywać okres sesji bez handlu
+  if (start && koniec && teraz >= start && teraz < koniec && ostatnia && teraz - ostatnia < 2 * 3600e3) status = 'trwa';
+  else if (start && teraz < start && dzienW(start, tz) === dzienW(teraz, tz)) status = 'przed';
+  else status = dzien === dzienW(teraz, tz) ? 'zamknieta' : 'poprzednia';
+  return {
+    status,
+    dzien,
+    otwarcie: start ? new Date(start).toISOString() : null,
+    zamkniecie: koniec ? new Date(koniec).toISOString() : null,
+  };
+}
+// NBP: kurs/cena złota z danego dnia (publikacja ok. 12:00 w dni robocze)
+const sesjaNbp = (data) => ({ status: data === dzienW(Date.now()) ? 'dzis' : 'poprzednia', dzien: data });
+
 // Spółka: rok notowań z Yahoo — kurs, zmiany, wykres 30 sesji, odległość od rocznego szczytu/dołka
 // i wskaźniki techniczne (RSI, średnie 50/200 dni)
 async function spolka(s) {
@@ -112,6 +151,7 @@ async function spolka(s) {
     odSzczytu: pct(cena, max52),
     odDolka: pct(cena, min52),
     ...techniczne(seria),
+    sesja: sesjaZMeta(r.meta),
   };
 }
 
@@ -146,19 +186,23 @@ async function yahoo(symbol, nazwa, jednostka) {
   const r = (await http(url)).chart.result[0];
   const closes = r.indicators.quote[0].close.filter((x) => x != null);
   const zrodlo = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`;
-  if (closes.length > 21) return instrument(nazwa, jednostka, closes, { zrodlo });
+  const sesja = sesjaZMeta(r.meta);
+  if (closes.length > 21) return { ...instrument(nazwa, jednostka, closes, { zrodlo }), sesja };
   // Dla indeksów GPW (WIG20, WIG) Yahoo nie ma historii dziennej, ale ma godzinową —
   // dzienne zamknięcie = ostatnia wartość godzinowa danego dnia (czas warszawski)
   const dzienne = await zGodzinowych(symbol);
   if (dzienne.length > 21) {
-    return instrument(nazwa, jednostka, [...dzienne.slice(0, -1), r.meta.regularMarketPrice], { zrodlo });
+    return { ...instrument(nazwa, jednostka, [...dzienne.slice(0, -1), r.meta.regularMarketPrice], { zrodlo }), sesja };
   }
-  return instrument(nazwa, jednostka, [r.meta.regularMarketPrice], {
-    zrodlo,
-    d1: r.meta.regularMarketChangePercent ?? null,
-    d7: null,
-    d30: null,
-  });
+  return {
+    ...instrument(nazwa, jednostka, [r.meta.regularMarketPrice], {
+      zrodlo,
+      d1: r.meta.regularMarketChangePercent ?? null,
+      d7: null,
+      d30: null,
+    }),
+    sesja,
+  };
 }
 
 // ---------- RSS ----------
@@ -330,9 +374,12 @@ const SPOLKI = [
 const zloto = await bezpiecznie('Złoto NBP (1 g)', async () => {
   const g = await http('https://api.nbp.pl/api/cenyzlota/last/30?format=json');
   return [
-    instrument('Złoto NBP (1 g)', 'zł', g.map((x) => x.cena), {
-      zrodlo: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json',
-    }),
+    {
+      ...instrument('Złoto NBP (1 g)', 'zł', g.map((x) => x.cena), {
+        zrodlo: 'https://api.nbp.pl/api/cenyzlota/last/30?format=json',
+      }),
+      sesja: sesjaNbp(g[g.length - 1].data),
+    },
   ];
 });
 const zlotoUsd = await bezpiecznie('Złoto (1 uncja)', async () => [
@@ -341,10 +388,13 @@ const zlotoUsd = await bezpiecznie('Złoto (1 uncja)', async () => [
 const usdPln = await bezpiecznie('USD/PLN', async () => {
   const r = (await http('https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json')).rates;
   return [
-    instrument('USD/PLN', 'zł', r.map((x) => x.mid), {
-      cyfry: 4,
-      zrodlo: 'https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json',
-    }),
+    {
+      ...instrument('USD/PLN', 'zł', r.map((x) => x.mid), {
+        cyfry: 4,
+        zrodlo: 'https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json',
+      }),
+      sesja: sesjaNbp(r[r.length - 1].effectiveDate),
+    },
   ];
 });
 const gpw = await bezpiecznie('GPW', async () => [
@@ -364,12 +414,15 @@ async function kryptoYahoo(symbol, nazwa) {
   const s = [...r.indicators.quote[0].close.filter((x) => x != null).slice(0, -1), r.meta.regularMarketPrice];
   const back = (n) => (s.length > n ? s[s.length - 1 - n] : null);
   const last = s[s.length - 1];
-  return instrument(nazwa, 'USD', s, {
-    cyfry: 0,
-    zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
-    d7: pct(last, back(7)),
-    d30: pct(last, back(30)),
-  });
+  return {
+    ...instrument(nazwa, 'USD', s, {
+      cyfry: 0,
+      zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
+      d7: pct(last, back(7)),
+      d30: pct(last, back(30)),
+    }),
+    sesja: sesjaZMeta(r.meta),
+  };
 }
 const krypto = await bezpiecznie('Krypto (Yahoo)', async () =>
   Promise.all([kryptoYahoo('BTC-USD', 'Bitcoin'), kryptoYahoo('ETH-USD', 'Ethereum')]),
@@ -420,10 +473,13 @@ const sygnaly = [
 const zGrupa = (grupa, lista) => lista.map((i) => ({ ...i, grupa }));
 const walutaNbp = async (kod, nazwa) => {
   const r = (await http(`https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`)).rates;
-  return instrument(nazwa, 'zł', r.map((x) => x.mid), {
-    cyfry: 4,
-    zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
-  });
+  return {
+    ...instrument(nazwa, 'zł', r.map((x) => x.mid), {
+      cyfry: 4,
+      zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
+    }),
+    sesja: sesjaNbp(r[r.length - 1].effectiveDate),
+  };
 };
 const stopaNbp = await bezpiecznie('Stopa NBP', async () => {
   const xml = await http('https://static.nbp.pl/dane/stopy/stopy_procentowe.xml', false);
@@ -549,6 +605,96 @@ const kalendarzTekst = wydarzenia.slice(0, 25).map(
   (w) =>
     `${new Date(w.data).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', weekday: 'short', day: '2-digit', month: '2-digit', ...(w.caly_dzien ? {} : { hour: '2-digit', minute: '2-digit' }) })} ${w.kraj}: ${w.nazwa} (ważność: ${w.waznosc}${w.prognoza ? `, prognoza ${w.prognoza}` : ''}${w.poprzednio ? `, poprzednio ${w.poprzednio}` : ''})`,
 );
+
+// ---------- Typ raportu i stan rynków (co jest już pewne, a co jeszcze się zmieni) ----------
+
+const teraz = new Date();
+const dzienTygodnia = teraz.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' });
+const godzinaPl = Number(teraz.toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false }));
+// Harmonogram: pn–pt 8:30 / 17:15 / 22:15, sobota 10:00, niedziela 18:00. Ręczny test — według pory dnia.
+const TYPY = {
+  'przed-sesja': { nazwa: 'Przed sesją', ikona: '🌅' },
+  'po-gpw': { nazwa: 'Po sesji GPW', ikona: '🇵🇱' },
+  'po-usa': { nazwa: 'Po sesji w USA', ikona: '🇺🇸' },
+  sobota: { nazwa: 'Podsumowanie tygodnia', ikona: '📆' },
+  niedziela: { nazwa: 'Przed tygodniem', ikona: '🔭' },
+};
+const kodTypu =
+  dzienTygodnia === 'Sat' ? 'sobota'
+  : dzienTygodnia === 'Sun' ? 'niedziela'
+  : godzinaPl < 12 ? 'przed-sesja'
+  : godzinaPl < 20 ? 'po-gpw'
+  : 'po-usa';
+const typRaportu = { kod: kodTypu, ...TYPY[kodTypu] };
+
+const fmtDzien = (d) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('pl-PL', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }) : '';
+const fmtGodz = (iso) => (iso ? new Date(iso).toLocaleTimeString('pl-PL', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }) : '');
+
+// Giełda (GPW, USA): czy sesja trwa, zamknęła się dziś (wynik ostateczny), czy dane są z poprzedniej sesji
+function stanGieldy(rynek, i) {
+  const s = i?.sesja;
+  if (!s) return { rynek, status: 'brak', tekst: 'brak danych o sesji' };
+  const wynik = i.d1 != null ? ` (${i.nazwa} ${fmtPct(i.d1)})` : '';
+  const teksty = {
+    trwa: `sesja trwa do ${fmtGodz(s.zamkniecie)} — liczby jeszcze się zmienią${wynik}`,
+    zamknieta: `sesja zamknięta — wynik dnia jest ostateczny${wynik}`,
+    przed: `otwarcie dziś o ${fmtGodz(s.otwarcie)} — pokazujemy zamknięcie z ${fmtDzien(s.dzien)}${wynik}`,
+    poprzednia: `dziś bez sesji — ostatnia sesja ${fmtDzien(s.dzien)}${wynik}`,
+  };
+  return { rynek, status: s.status, dzien: s.dzien, tekst: teksty[s.status] };
+}
+const metal = zlotoUsd.find((i) => !i.blad);
+const nbp = zloto.find((i) => !i.blad);
+const dzisPl = dzienW(Date.now());
+const wydarzeniaDzis = wydarzenia.filter((w) => !w.caly_dzien && dzienW(new Date(w.data).getTime()) === dzisPl);
+const stanRynkow = [
+  stanGieldy('GPW', gpw.find((i) => !i.blad)),
+  stanGieldy('USA', usa.find((i) => !i.blad)),
+  metal?.sesja
+    ? {
+        rynek: 'Złoto i srebro',
+        status: metal.sesja.status === 'trwa' ? 'trwa' : 'poprzednia',
+        dzien: metal.sesja.dzien,
+        tekst:
+          metal.sesja.status === 'trwa'
+            ? 'handel trwa prawie całą dobę — cena zmienia się na bieżąco'
+            : `handel wstrzymany — ostatnia cena z ${fmtDzien(metal.sesja.dzien)}`,
+      }
+    : null,
+  { rynek: 'Krypto', status: 'trwa', tekst: 'handel 24/7 — cena zmienia się na bieżąco' },
+  nbp?.sesja
+    ? {
+        rynek: 'NBP',
+        status: nbp.sesja.status,
+        dzien: nbp.sesja.dzien,
+        tekst:
+          nbp.sesja.status === 'dzis'
+            ? `dzisiejsze kursy walut i cena złota (${fmtDzien(nbp.sesja.dzien)})`
+            : ['Sat', 'Sun'].includes(dzienTygodnia) || godzinaPl >= 13
+              ? `kursy z ${fmtDzien(nbp.sesja.dzien)} (dziś NBP nie publikuje)`
+              : `kursy z ${fmtDzien(nbp.sesja.dzien)} — dzisiejsze NBP publikuje ok. 12:00`,
+      }
+    : null,
+  wydarzeniaDzis.length
+    ? {
+        rynek: 'Dane makro',
+        status: 'info',
+        tekst: [
+          wydarzeniaDzis.filter((w) => new Date(w.data) <= teraz).length
+            ? `opublikowane dziś: ${wydarzeniaDzis.filter((w) => new Date(w.data) <= teraz).map((w) => `${w.nazwa} (${fmtGodz(w.data)})`).join(', ')}`
+            : '',
+          wydarzeniaDzis.filter((w) => new Date(w.data) > teraz).length
+            ? `dziś jeszcze: ${wydarzeniaDzis.filter((w) => new Date(w.data) > teraz).map((w) => `${w.nazwa} o ${fmtGodz(w.data)}`).join(', ')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      }
+    : null,
+].filter(Boolean);
+const IKONY_STANU = { trwa: '🟢', zamknieta: '✅', dzis: '✅', przed: '⏳', poprzednia: '⏳', info: '📅', brak: '⚪' };
+const stanTekst = stanRynkow.map((r) => `${IKONY_STANU[r.status] ?? ''} ${r.rynek}: ${r.tekst}`);
 
 // ---------- Rekomendacje analityków (z newsów: RSS + Google News) ----------
 
@@ -717,6 +863,58 @@ const tematy = [
   },
 ];
 
+// ---------- Tydzień (na weekend): zmiany tygodniowe, spółki tygodnia, pomysły i kontrola AI z pamięci ----------
+// Pomysły i statystyki kontroli zapisuje klocek "Weryfikacja źródeł" przy automatycznych raportach.
+const TYDZIEN_MS = 7 * 864e5;
+const cenyTeraz = Object.fromEntries(kluczowe.map((i) => [i.nazwa, i.wartosc]));
+const widzianeTydzien = new Set();
+const tydzienRynki = [...gpw, ...usa, ...zlotoUsd, ...makro, ...krypto]
+  .filter(
+    (i) =>
+      !i.blad &&
+      i.d7 != null &&
+      ['WIG20', 'WIG', 'S&P 500', 'Nasdaq', 'Dow Jones', 'Złoto (1 uncja)', 'Srebro', 'USD/PLN', 'EUR/PLN', 'Ropa Brent', 'Bitcoin', 'Ethereum'].includes(i.nazwa),
+  )
+  .filter((i) => !widzianeTydzien.has(i.nazwa) && widzianeTydzien.add(i.nazwa))
+  .map((i) => `${i.nazwa}: tydzień ${fmtPct(i.d7)} (ostatnio ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka})`);
+const spolkiTygodnia = [
+  `Najmocniej w górę (tydzień): ${poZmianie('d7').slice(-3).reverse().map((s) => `${s.nazwa} ${fmtPct(s.d7)}`).join(', ')}`,
+  `Najmocniej w dół (tydzień): ${poZmianie('d7').slice(0, 3).map((s) => `${s.nazwa} ${fmtPct(s.d7)}`).join(', ')}`,
+];
+const widzianePomysly = new Set();
+const pomyslyTygodnia = (pamiec.pomysly ?? [])
+  .filter((p) => Date.now() - new Date(p.t).getTime() < TYDZIEN_MS && p.nazwa && p.cena != null)
+  // Ten sam pomysł (instrument + kierunek) powtarzany w kolejnych raportach liczymy raz, od pierwszego
+  .filter((p) => !widzianePomysly.has(p.nazwa + p.kierunek) && widzianePomysly.add(p.nazwa + p.kierunek))
+  .map((p) => {
+    const zmiana = cenyTeraz[p.nazwa] != null ? pct(cenyTeraz[p.nazwa], p.cena) : null;
+    return { ...p, zmiana, trafiony: zmiana != null && p.kierunek * zmiana > 0 };
+  });
+const pomyslyTekst = pomyslyTygodnia.length
+  ? [
+      ...pomyslyTygodnia.map(
+        (p) =>
+          `${fmtDzien(dzienW(new Date(p.t).getTime()))} ${p.kierunek === -1 ? '↓ ostrzeżenie' : '↑ szansa'} — ${p.nazwa}: od pomysłu ${fmtPct(p.zmiana)} → ${p.zmiana == null ? 'brak ceny' : p.trafiony ? 'zgodnie z kierunkiem' : 'wbrew kierunkowi'}`,
+      ),
+      `Razem: ${pomyslyTygodnia.filter((p) => p.trafiony).length} z ${pomyslyTygodnia.filter((p) => p.zmiana != null).length} zgodnie z kierunkiem`,
+    ]
+  : ['Brak zapisanych pomysłów z tego tygodnia (statystyka dopiero się zbiera).'];
+const statTygodnia = (pamiec.statystyki ?? []).filter((x) => Date.now() - new Date(x.t).getTime() < TYDZIEN_MS);
+const kontrolaTygodnia = {
+  raporty: statTygodnia.length,
+  sprawdzone: statTygodnia.reduce((s, x) => s + x.sprawdzone, 0),
+  niezgodne: statTygodnia.reduce((s, x) => s + x.niezgodne, 0),
+  bezAI: statTygodnia.filter((x) => x.bezAI).length,
+};
+const kontrolaTekst = kontrolaTygodnia.raporty
+  ? [
+      `Raportów: ${kontrolaTygodnia.raporty}, liczb w komentarzach AI sprawdzonych automatycznie: ${kontrolaTygodnia.sprawdzone}, niezgodnych z danymi: ${kontrolaTygodnia.niezgodne}, raportów bez komentarza AI: ${kontrolaTygodnia.bezAI}`,
+    ]
+  : ['Brak statystyk z tego tygodnia (zbierają się od wdrożenia).'];
+const wynikiWTygodniu = wydarzenia
+  .filter((w) => w.typ === 'wyniki' && new Date(w.data).getTime() - Date.now() < TYDZIEN_MS)
+  .map((w) => `${fmtDzien(dzienW(new Date(w.data).getTime()))}: ${w.nazwa}${w.prognoza ? ` (${w.prognoza})` : ''}`);
+
 // Podsumowanie dnia: kluczowe liczby, największe ruchy spółek i najważniejsze newsy ze wszystkich tematów
 const pierwszy = (lista) => lista.filter((i) => !i.blad).slice(0, 1);
 // Newsy dla podsumowania: najważniejsze z tematów + wszystkie rekomendacje (żeby dało się je cytować)
@@ -727,10 +925,13 @@ const newsyDnia = [
 const makroSkrot = makro
   .filter((i) => !i.blad)
   .map((i) => `${i.nazwa}: ${fmtNum(i.wartosc, i.cyfry)} ${i.jednostka}${i.d30 != null ? ` (miesiąc ${fmtPct(i.d30)})` : ''}${i.opisPl ? ` — ${i.opisPl}` : ''}`);
-tematy.push({
-  category: 'dzien',
-  title: 'Podsumowanie dnia',
-  instrumenty: [...pierwszy(zloto), ...pierwszy(gpw), ...pierwszy(usa), ...pierwszy(krypto), ...pierwszy(usdPln)],
+
+const POMYSLY_ZASADY = `Sformułowania "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk". Każdy pomysł dotyczy JEDNEJ spółki lub instrumentu (pełna nazwa jak w danych) i zaczyna się od strzałki: "- ↑ " gdy chodzi o szansę na wzrost, "- ↓ " gdy to ostrzeżenie przed spadkiem.`;
+const STOPKA = 'Na samym końcu osobna linia: "To informacja, nie porada inwestycyjna — przed decyzją zweryfikuj sam i dopasuj do swojej sytuacji."';
+const SEKCJE_ZASADA =
+  'WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie w tej kolejności:';
+
+const RAPORT_DNIA = {
   dodatkowe: [
     '— RUCHY SPÓŁEK —', ...ruchy,
     '— SYGNAŁY TECHNICZNE —', ...sygnaly,
@@ -738,10 +939,7 @@ tematy.push({
     '— MAKRO —', ...makroSkrot,
     '— KALENDARZ (czas polski) —', ...(kalendarzTekst.slice(0, 10).length ? kalendarzTekst.slice(0, 10) : ['brak ważnych wydarzeń']),
   ],
-  newsy: newsyDnia,
-  // Migawka cen z chwili raportu — apka liczy z niej wyniki "Pomysłów do rozważenia"
-  extra: { ceny: Object.fromEntries(kluczowe.map((i) => [i.nazwa, i.wartosc])) },
-  prompt: `Rozbudowany RAPORT DNIA dla inwestora indywidualnego (ok. 500-800 słów — może być długi, czytelnik czyta go raz, dokładnie). WYJĄTEK od domyślnego formatu: podziel tekst na sekcje. Każda sekcja zaczyna się od osobnej linii z samą nazwą sekcji i dwukropkiem, dokładnie w tej kolejności:
+  prompt: `Rozbudowany RAPORT „${typRaportu.nazwa}” dla inwestora indywidualnego (ok. 500-800 słów — może być długi, czytelnik czyta go raz, dokładnie). ${SEKCJE_ZASADA}
 Co się stało:
 Od ostatniego raportu:
 Co przed nami:
@@ -752,16 +950,95 @@ Rekomendacje dnia:
 Pomysły do rozważenia:
 Ryzyka:
 Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
-- "Co się stało" — najważniejsze wydarzenia na rynkach (liczby + źródła).
+- "Co się stało" — najważniejsze wydarzenia na rynkach (liczby + źródła). Zgodnie ze STANEM RYNKÓW: o sesjach zamkniętych pisz jako o wyniku ("GPW zakończyła sesję…", "wczorajsza sesja w USA…"), o trwających — "w trakcie sesji".
 - "Od ostatniego raportu" — co się zmieniło od poprzedniego raportu (dane z sekcji OD OSTATNIEGO RAPORTU); jeśli brak danych, 1 punkt z najważniejszą zmianą dnia.
 - "Co przed nami" — najważniejsze wydarzenia z KALENDARZA (dzień, godzina, dlaczego ważne; nazwy po polsku).
 - "Makro w pigułce" — stopy, rentowności, dolar, ropa, nastroje (VIX, Fear & Greed) i co z tego wynika.
 - "Sygnały techniczne" — szerokość rynku (ile spółek nad średnią 200 dni vs tydzień temu), spółki wyprzedane/wykupione (RSI), testy średniej 200 dni. Wyjaśniaj po ludzku, co znaczy dany sygnał.
 - "Spółki w ruchu" — największe wzrosty/spadki dużych spółek i ich POWODY z newsów.
 - "Rekomendacje dnia" — rekomendacje analityków z newsów (kto, dla jakiej spółki, jaka ocena, cena docelowa tylko jeśli jest w newsie, z numerem źródła). Jeśli brak — napisz to.
-- "Pomysły do rozważenia" — 2-4 pomysły łączące dane: np. wyprzedana spółka (RSI) + dobry news + rekomendacja; co, dlaczego teraz (liczby + źródło), na co uważać. Sformułowania "można rozważyć", "warto przeanalizować", "dla cierpliwych", NIGDY "kup", "sprzedaj", "pewny zysk". Każdy pomysł dotyczy JEDNEJ spółki lub instrumentu (pełna nazwa jak w danych) i zaczyna się od strzałki: "- ↑ " gdy chodzi o szansę na wzrost, "- ↓ " gdy to ostrzeżenie przed spadkiem.
+- "Pomysły do rozważenia" — 2-4 pomysły łączące dane: np. wyprzedana spółka (RSI) + dobry news + rekomendacja; co, dlaczego teraz (liczby + źródło), na co uważać. ${POMYSLY_ZASADY}
 - "Ryzyka" — co może pójść nie tak (makro, geopolityka, zmienność, wydarzenia z kalendarza).
-Na samym końcu osobna linia: "To informacja, nie porada inwestycyjna — przed decyzją zweryfikuj sam i dopasuj do swojej sytuacji."`,
+${STOPKA}`,
+};
+
+const RAPORT_SOBOTA = {
+  dodatkowe: [
+    '— TYDZIEŃ NA RYNKACH (zmiana od poprzedniego piątku) —', ...tydzienRynki,
+    '— SPÓŁKI TYGODNIA —', ...spolkiTygodnia,
+    '— POMYSŁY Z TYGODNIA (cena przy pomyśle → teraz) —', ...pomyslyTekst,
+    '— KONTROLA AI W TYGODNIU —', ...kontrolaTekst,
+    '— MAKRO —', ...makroSkrot,
+  ],
+  prompt: `PODSUMOWANIE TYGODNIA dla inwestora indywidualnego (sobota; giełdy są zamknięte od piątku — pisz o minionym tygodniu, czasem przeszłym; ok. 400-700 słów). ${SEKCJE_ZASADA}
+Tydzień w skrócie:
+Rynki w tym tygodniu:
+Spółki tygodnia:
+Najważniejsze wydarzenia:
+Wyniki pomysłów:
+Kontrola jakości:
+Co dalej:
+Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
+- "Tydzień w skrócie" — najważniejsze, co zdarzyło się na rynkach w tym tygodniu.
+- "Rynki w tym tygodniu" — zmiany tygodniowe indeksów, złota, srebra, walut i krypto z TYDZIEŃ NA RYNKACH (liczby) i co je napędzało (newsy ze źródłami).
+- "Spółki tygodnia" — najmocniejsze i najsłabsze spółki tygodnia (SPÓŁKI TYGODNIA) i powody z newsów.
+- "Najważniejsze wydarzenia" — 3-5 punktów z newsów, z numerami źródeł.
+- "Wyniki pomysłów" — na podstawie POMYSŁY Z TYGODNIA: które poszły zgodnie z zapowiadanym kierunkiem, a które nie; uczciwie, z liczbami. Jeśli brak danych — napisz, że statystyka dopiero się zbiera.
+- "Kontrola jakości" — 1 punkt z KONTROLA AI W TYGODNIU.
+- "Co dalej" — 1-2 punkty: na co patrzeć w przyszłym tygodniu (szczegółowy kalendarz będzie w niedzielnym raporcie).
+${STOPKA}`,
+};
+
+const RAPORT_NIEDZIELA = {
+  dodatkowe: [
+    '— KALENDARZ NA TEN TYDZIEŃ (czas polski) —', ...(kalendarzTekst.length ? kalendarzTekst : ['brak ważnych wydarzeń w kalendarzu']),
+    '— WYNIKI SPÓŁEK W TYM TYGODNIU —', ...(wynikiWTygodniu.length ? wynikiWTygodniu : ['żadna ze śledzonych spółek nie publikuje wyników']),
+    '— OD OSTATNIEGO RAPORTU (weekend) —', ...odOstatniego,
+    '— TYDZIEŃ NA RYNKACH (zamknięcie piątku) —', ...tydzienRynki,
+    '— SYGNAŁY TECHNICZNE —', ...sygnaly,
+    '— MAKRO —', ...makroSkrot,
+  ],
+  prompt: `PRZED TYGODNIEM — zapowiedź nadchodzącego tygodnia dla inwestora indywidualnego (niedziela wieczór; giełdy otwierają się w poniedziałek; ok. 400-700 słów). ${SEKCJE_ZASADA}
+Weekend w skrócie:
+Kalendarz tygodnia:
+Wyniki spółek:
+Na co uważać:
+Pomysły do rozważenia:
+Ryzyka:
+Pod nazwą sekcji: 2-5 punktów zaczynających się od "- ".
+- "Weekend w skrócie" — krypto w weekend (Bitcoin, Ethereum, Fear & Greed; dane OD OSTATNIEGO RAPORTU) i najważniejsze newsy weekendu ze źródłami.
+- "Kalendarz tygodnia" — 4-8 najważniejszych wydarzeń z KALENDARZA NA TEN TYDZIEŃ: dzień, godzina, nazwa po polsku, dlaczego ważne.
+- "Wyniki spółek" — śledzone spółki publikujące wyniki w tym tygodniu (WYNIKI SPÓŁEK W TYM TYGODNIU) i na co patrzeć; jeśli brak — napisz to.
+- "Na co uważać" — sytuacja przed poniedziałkiem: jak zakończył się poprzedni tydzień (TYDZIEŃ NA RYNKACH), sygnały techniczne, nastroje.
+- "Pomysły do rozważenia" — 2-4 pomysły na nadchodzący tydzień. ${POMYSLY_ZASADY}
+- "Ryzyka" — co może pójść nie tak w tym tygodniu.
+${STOPKA}`,
+};
+
+const wariant = kodTypu === 'sobota' ? RAPORT_SOBOTA : kodTypu === 'niedziela' ? RAPORT_NIEDZIELA : RAPORT_DNIA;
+tematy.push({
+  category: 'dzien',
+  title: kodTypu === 'sobota' || kodTypu === 'niedziela' ? typRaportu.nazwa : 'Podsumowanie dnia',
+  instrumenty: [...pierwszy(zloto), ...pierwszy(gpw), ...pierwszy(usa), ...pierwszy(krypto), ...pierwszy(usdPln)],
+  dodatkowe: wariant.dodatkowe,
+  newsy: newsyDnia,
+  extra: {
+    // Migawka cen z chwili raportu — apka liczy z niej wyniki "Pomysłów do rozważenia"
+    ceny: cenyTeraz,
+    // Sobota: bilans pomysłów i kontroli z tygodnia (apka i powiadomienie)
+    ...(kodTypu === 'sobota'
+      ? {
+          tydzien: {
+            pomysly: pomyslyTygodnia.filter((p) => p.zmiana != null).length,
+            trafione: pomyslyTygodnia.filter((p) => p.trafiony).length,
+            kontrola: kontrolaTygodnia,
+          },
+        }
+      : {}),
+    // Niedziela: ile ważnych wydarzeń i wyników spółek w nadchodzącym tygodniu (do powiadomienia)
+    ...(kodTypu === 'niedziela' ? { przedTygodniem: { wydarzenia: wydarzenia.length, wyniki: wynikiWTygodniu.length } } : {}),
+  },
+  prompt: wariant.prompt,
 });
 
 const dzis = new Date().toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });
@@ -782,6 +1059,9 @@ return tematy.map((t) => ({
     title: `${t.title} — ${dzis}`,
     dzis,
     problemy,
+    typRaportu,
+    stanRynkow,
+    stanTekst,
     daneTekst: [...t.instrumenty.map(opis), ...(t.dodatkowe ?? [])].map((d) => '- ' + d).join('\n') || '- brak',
     newsyTekst: t.newsy.length
       ? t.newsy.map((n) => `[${n.nr}] ${godz(n.data)} ${n.domena} — ${n.tytul}. ${n.opis}`).join('\n')

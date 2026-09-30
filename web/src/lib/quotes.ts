@@ -1,4 +1,5 @@
 import type { Instrument } from "./reports";
+import { sesjaNbp, sesjaZMeta, type YahooMeta } from "./sesja";
 import { technicals } from "./tech";
 
 // Kursy na żywo pobierane przez apkę (bez AI). Te same źródła co w n8n,
@@ -42,7 +43,7 @@ async function getJson<T>(url: string, revalidate = REVALIDATE_SECONDS): Promise
 type YahooChart = {
   chart: {
     result: {
-      meta: { regularMarketPrice: number; regularMarketChangePercent?: number; chartPreviousClose?: number };
+      meta: { regularMarketPrice: number; regularMarketChangePercent?: number; chartPreviousClose?: number } & YahooMeta;
       indicators: { quote: { close: (number | null)[] }[] };
     }[];
   };
@@ -77,22 +78,26 @@ async function yahoo(symbol: string, nazwa: string, jednostka: string, revalidat
   const closes = r.indicators.quote[0].close.filter((x): x is number => x != null);
   const zrodlo = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`;
   const price = r.meta.regularMarketPrice;
+  const sesja = sesjaZMeta(r.meta);
 
   if (closes.length > 21) {
     // Ostatni punkt serii zastępujemy bieżącą ceną (w trakcie sesji zamknięcia jeszcze nie ma)
-    return instrument(nazwa, jednostka, [...closes.slice(0, -1), price], { zrodlo });
+    return { ...instrument(nazwa, jednostka, [...closes.slice(0, -1), price], { zrodlo }), sesja };
   }
   // Dla indeksów GPW (WIG20, WIG) Yahoo nie ma historii dziennej, ale ma godzinową
   const daily = await dailyFromHourly(symbol);
   if (daily.length > 21) {
-    return instrument(nazwa, jednostka, [...daily.slice(0, -1), price], { zrodlo });
+    return { ...instrument(nazwa, jednostka, [...daily.slice(0, -1), price], { zrodlo }), sesja };
   }
-  return instrument(nazwa, jednostka, [price], {
-    zrodlo,
-    d1: r.meta.regularMarketChangePercent ?? null,
-    d7: null,
-    d30: null,
-  });
+  return {
+    ...instrument(nazwa, jednostka, [price], {
+      zrodlo,
+      d1: r.meta.regularMarketChangePercent ?? null,
+      d7: null,
+      d30: null,
+    }),
+    sesja,
+  };
 }
 
 // Duże spółki — te same co w n8n (n8n/src/dane-i-tematy.js, SPOLKI); nazwy muszą się zgadzać.
@@ -127,20 +132,24 @@ async function company(symbol: string, nazwa: string): Promise<Instrument> {
     odSzczytu: pct(price, max52),
     odDolka: pct(price, min52),
     ...technicals(seria),
+    sesja: sesjaZMeta(r.meta),
   };
 }
 
 // Makro na żywo (nazwy jak w n8n, temat "makro"). Stopa NBP i Fear & Greed zmieniają się rzadko —
 // te bierzemy z raportu. Odświeżamy najwyżej co minutę.
 async function nbpRate(kod: string, nazwa: string): Promise<Instrument> {
-  const r = await getJson<{ rates: { mid: number }[] }>(
+  const r = await getJson<{ rates: { mid: number; effectiveDate: string }[] }>(
     `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
     600,
   );
-  return instrument(nazwa, "zł", r.rates.map((x) => x.mid), {
-    cyfry: 4,
-    zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
-  });
+  return {
+    ...instrument(nazwa, "zł", r.rates.map((x) => x.mid), {
+      cyfry: 4,
+      zrodlo: `https://api.nbp.pl/api/exchangerates/rates/a/${kod}/last/30/?format=json`,
+    }),
+    sesja: sesjaNbp(r.rates[r.rates.length - 1].effectiveDate),
+  };
 }
 
 async function macro(): Promise<Instrument[]> {
@@ -161,19 +170,25 @@ async function nbpGold(): Promise<Instrument> {
   const g = await getJson<{ data: string; cena: number }[]>(
     "https://api.nbp.pl/api/cenyzlota/last/30?format=json",
   );
-  return instrument("Złoto NBP (1 g)", "zł", g.map((x) => x.cena), {
-    zrodlo: "https://api.nbp.pl/api/cenyzlota/last/30?format=json",
-  });
+  return {
+    ...instrument("Złoto NBP (1 g)", "zł", g.map((x) => x.cena), {
+      zrodlo: "https://api.nbp.pl/api/cenyzlota/last/30?format=json",
+    }),
+    sesja: sesjaNbp(g[g.length - 1].data),
+  };
 }
 
 async function nbpUsd(): Promise<Instrument> {
-  const r = await getJson<{ rates: { mid: number }[] }>(
+  const r = await getJson<{ rates: { mid: number; effectiveDate: string }[] }>(
     "https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json",
   );
-  return instrument("USD/PLN", "zł", r.rates.map((x) => x.mid), {
-    cyfry: 4,
-    zrodlo: "https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json",
-  });
+  return {
+    ...instrument("USD/PLN", "zł", r.rates.map((x) => x.mid), {
+      cyfry: 4,
+      zrodlo: "https://api.nbp.pl/api/exchangerates/rates/a/usd/last/30/?format=json",
+    }),
+    sesja: sesjaNbp(r.rates[r.rates.length - 1].effectiveDate),
+  };
 }
 
 // Krypto z Yahoo (CoinGecko od 29.09 zwraca 403). Notowania 7 dni w tygodniu,
@@ -187,12 +202,15 @@ async function cryptoYahoo(symbol: string, nazwa: string): Promise<Instrument> {
   const s = [...closes.slice(0, -1), r.meta.regularMarketPrice];
   const back = (n: number) => (s.length > n ? s[s.length - 1 - n] : null);
   const last = s[s.length - 1];
-  return instrument(nazwa, "USD", s, {
-    cyfry: 0,
-    zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
-    d7: pct(last, back(7)),
-    d30: pct(last, back(30)),
-  });
+  return {
+    ...instrument(nazwa, "USD", s, {
+      cyfry: 0,
+      zrodlo: `https://finance.yahoo.com/quote/${symbol}`,
+      d7: pct(last, back(7)),
+      d30: pct(last, back(30)),
+    }),
+    sesja: sesjaZMeta(r.meta),
+  };
 }
 
 async function crypto(): Promise<Instrument[]> {

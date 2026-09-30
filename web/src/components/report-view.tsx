@@ -6,6 +6,7 @@ import { InstrumentPanel } from "./instruments";
 import { LiveBadge } from "./live-quotes";
 import { NewsList } from "./news-list";
 import { ReportContent } from "./report-content";
+import { MarketStatus } from "./market-status";
 import { NumberCheck } from "./source-status";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -42,6 +43,8 @@ export function ReportView({ report, live = false }: { report: Report; live?: bo
           {meta.icon} {meta.label}
         </h1>
       </header>
+
+      {report.category === "dzien" && <MarketStatus stan={data.stanRynkow} czas={report.created_at} />}
 
       <article className="card card-hero p-5">
         {data.komentarz ? (
