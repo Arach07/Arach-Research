@@ -7,6 +7,7 @@ import { Ticker } from "@/components/instruments";
 import { LiveBadge } from "@/components/live-quotes";
 import { EmptyState } from "@/components/page-header";
 import { MarketStatus } from "@/components/market-status";
+import { ZapytajORaport } from "@/components/czat";
 import { PushToggle } from "@/components/push-toggle";
 import { NumberCheck, SourceStatus } from "@/components/source-status";
 import { formatDateTime } from "@/lib/format";
@@ -90,6 +91,12 @@ export default async function TodayPage() {
                 <span>💡 Jak wyszły wcześniejsze pomysły?</span>
                 <span className="text-muted">›</span>
               </Link>
+              <ZapytajORaport
+                id={summary.id}
+                nazwa={`${weekend && typ ? typ.nazwa : "Podsumowanie dnia"}, ${formatDateTime(summary.created_at)}`}
+                etykieta="💬 Zapytaj o to podsumowanie"
+                className="mt-3"
+              />
             </>
           ) : (
             <p className="text-sm text-muted">Komentarz AI niedostępny — zajrzyj do tematów poniżej.</p>

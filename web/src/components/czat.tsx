@@ -393,16 +393,26 @@ function Panel({
 }
 
 // Link pod raportem: otwiera czat z tym raportem jako tematem
-export function ZapytajORaport({ id, nazwa }: { id: number; nazwa: string }) {
+export function ZapytajORaport({
+  id,
+  nazwa,
+  etykieta = "💬 Zapytaj o ten raport",
+  className = "",
+}: {
+  id: number;
+  nazwa: string;
+  etykieta?: string;
+  className?: string;
+}) {
   const czat = useCzat();
   if (!czat) return null;
   return (
     <button
       type="button"
       onClick={() => czat.otworz({ id, nazwa })}
-      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line-strong bg-white/[0.03] py-3 text-sm font-medium text-accent hover:bg-accent/10"
+      className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-line-strong bg-white/[0.03] py-3 text-sm font-medium text-accent hover:bg-accent/10 ${className}`}
     >
-      💬 Zapytaj o ten raport
+      {etykieta}
     </button>
   );
 }
