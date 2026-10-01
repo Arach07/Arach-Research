@@ -196,6 +196,14 @@ Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Now
 **Do obserwacji:**
 5. Pierwszy raport sobotni (📆 10:00) i niedzielny (🔭 18:00) — sprawdzić, jak AI radzi sobie z nowymi poleceniami i czy niedzielny kalendarz ma już nowy tydzień.
 
+**▶️ NASTĘPNE DO ZROBIENIA (po weekendowych raportach, ustalone 01.10):**
+- **💬 Czat AI w apce** — przycisk „Zapytaj” (Dziś + raporty); pytania typu „co to jest RSI?”, „dlaczego złoto spada?”. AI dostaje dane z ostatniego raportu (kursy, stan rynków, komentarz, newsy ze źródłami), przy pojęciach ogólnych zaznacza, że to wiedza ogólna. Gemini wywoływany z apki (Vercel), **osobny klucz** z osobnego projektu AI Studio (żeby nie zjadać limitu raportów n8n), tylko po zalogowaniu, klucz tylko na serwerze. Wystarczy kilka pytań dziennie.
+
+**Pomysły do rozważenia (01.10):**
+- „W 30 sekund” — 3 zdania na górze Dziś (najważniejsze / co się zmieniło / na co uważać), pisane przez AI w tym samym zapytaniu.
+- Moje notatki przy pomysłach — „obserwuję / kupiłem / pomijam” + notatka; wyniki moich decyzji obok wyników AI.
+- Ostatni raport bez internetu — apka pamięta ostatni raport na telefonie (metro, samolot).
+
 **Później / opcjonalnie:**
 6. Model spoza Google na końcu łańcucha (Groq) — 30.09: „mamy tyle modeli, na razie nie ma sensu”.
 7. VPN w domu (zadanie B, nauka).
