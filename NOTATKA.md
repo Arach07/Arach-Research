@@ -197,7 +197,13 @@ Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Now
 5. Pierwszy raport sobotni (📆 10:00) i niedzielny (🔭 18:00) — sprawdzić, jak AI radzi sobie z nowymi poleceniami i czy niedzielny kalendarz ma już nowy tydzień.
 
 **▶️ NASTĘPNE DO ZROBIENIA (po weekendowych raportach, ustalone 01.10):**
-- **💬 Czat AI w apce** — przycisk „Zapytaj” (Dziś + raporty); pytania typu „co to jest RSI?”, „dlaczego złoto spada?”. AI dostaje dane z ostatniego raportu (kursy, stan rynków, komentarz, newsy ze źródłami), przy pojęciach ogólnych zaznacza, że to wiedza ogólna. Gemini wywoływany z apki (Vercel), **osobny klucz** z osobnego projektu AI Studio (żeby nie zjadać limitu raportów n8n), tylko po zalogowaniu, klucz tylko na serwerze. Wystarczy kilka pytań dziennie.
+- **💬 Czat AI w apce** — ustalenia z 01.10:
+  - **Wygląd:** mały uchwyt ze strzałką przy prawej krawędzi ekranu, w złotej ramce jak reszta apki → po stuknięciu okno czatu wysuwa się od dołu (ok. 85% ekranu, zamykanie ✕ albo gestem w dół), gotowe pytania do stuknięcia, pole do pisania nad klawiaturą. Na komputerze może być panel z prawej. Pod każdym raportem link „💬 Zapytaj o ten raport”.
+  - **Rozmowa:** prawdziwa konwersacja (AI pamięta wcześniejsze pytania), jeden czat dla całej apki; na start znika po zamknięciu apki (zapis w bazie ewentualnie później).
+  - **Co wie:** dane z najnowszych raportów ze wszystkich zakładek (Dziś, Rynki: przegląd/spółki/makro/kalendarz, Scamy, wyniki pomysłów) + aktualne kursy na żywo — niezależnie od strony, na której jestem. Nie zna starszych raportów z Archiwum ani spółek spoza listy (wtedy odpowiada z wiedzy ogólnej i to zaznacza). Zawsze dopisek „informacja, nie porada inwestycyjna”.
+  - **Limity:** osobny klucz Gemini z **osobnego projektu** AI Studio (pytania nie zjadają limitu raportów n8n) + limit w apce ok. 30 pytań dziennie.
+  - **Bezpieczeństwo:** tylko po zalogowaniu, klucz tylko na serwerze (Vercel).
+  - **Wdrożenie:** ja: nowy projekt w AI Studio + klucz → Vercel (zmienna np. `GEMINI_CHAT_KEY`) + Redeploy. Claude: buduje i testuje, push na GitHuba. **n8n bez zmian.** Bez przebudowy reszty apki.
 
 **Pomysły do rozważenia (01.10):**
 - „W 30 sekund” — 3 zdania na górze Dziś (najważniejsze / co się zmieniło / na co uważać), pisane przez AI w tym samym zapytaniu.
