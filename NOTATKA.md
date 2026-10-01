@@ -196,7 +196,9 @@ Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Now
 **Do obserwacji:**
 5. Pierwszy raport sobotni (📆 10:00) i niedzielny (🔭 18:00) — sprawdzić, jak AI radzi sobie z nowymi poleceniami i czy niedzielny kalendarz ma już nowy tydzień.
 
-**▶️ NASTĘPNE DO ZROBIENIA (po weekendowych raportach, ustalone 01.10):**
+**✅ ZROBIONE 01.10: czat AI w apce** (zbudowany wcześniej niż planowano — nie rusza n8n). Kod: `web/src/components/czat.tsx` (uchwyt, panel, link pod raportami), `web/src/app/api/czat/route.ts`, `web/src/lib/czat-kontekst.ts` (dane dla AI, polecenie), `web/src/lib/czat-gemini.ts` (Gemini strumieniowo, zapasowe modele). Klucz `GEMINI_CHAT_KEY` w Vercelu (projekt AI Studio `research-czat`) + lokalnie w `web/.env.local` do testów (ignorowany przez Git — NIE wpisywać kluczy do `.env.local.example`!). Limit 30 pytań dziennie na urządzenie.
+
+**Ustalenia czatu (dla porządku):**
 - **💬 Czat AI w apce** — ustalenia z 01.10:
   - **Wygląd:** mały uchwyt ze strzałką ‹ przy prawej krawędzi ekranu, w złotej ramce jak reszta apki → po stuknięciu panel czatu **wysuwa się z prawej** (animacja, ok. 85% szerokości, pełna wysokość z odstępem od paska z aparatem i dołu iPhone'a, reszta ekranu przyciemniona); zamykanie ✕, przesunięciem w prawo albo stuknięciem w przyciemnioną część. Gotowe pytania do stuknięcia, pole do pisania nad klawiaturą. Na komputerze ten sam panel, węższy. Pod każdym raportem link „💬 Zapytaj o ten raport”.
   - **Rozmowa:** prawdziwa konwersacja (AI pamięta wcześniejsze pytania), jeden czat dla całej apki; na start znika po zamknięciu apki (zapis w bazie ewentualnie później).

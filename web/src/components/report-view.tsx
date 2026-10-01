@@ -6,6 +6,7 @@ import { InstrumentPanel } from "./instruments";
 import { LiveBadge } from "./live-quotes";
 import { NewsList } from "./news-list";
 import { ReportContent } from "./report-content";
+import { ZapytajORaport } from "./czat";
 import { MarketStatus } from "./market-status";
 import { NumberCheck } from "./source-status";
 
@@ -98,6 +99,8 @@ export function ReportView({ report, live = false }: { report: Report; live?: bo
           </div>
         </Section>
       )}
+
+      <ZapytajORaport id={report.id} nazwa={`${meta.label}, ${formatDateTime(report.created_at)}`} />
 
       <Section title="Źródła">
         <div className="card p-4">

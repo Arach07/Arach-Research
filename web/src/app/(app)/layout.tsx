@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/bottom-nav";
+import { CzatProvider } from "@/components/czat";
 import { LiveQuotesProvider } from "@/components/live-quotes";
 import { latestReportAt } from "@/lib/reports";
 
@@ -8,6 +9,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const latest = await latestReportAt();
   return (
     <LiveQuotesProvider latestReportAt={latest}>
+      <CzatProvider>
       {/* min-h-[100dvh]: strona zawsze co najmniej na wysokość ekranu (także podczas ładowania),
           żeby telefon nie przesuwał swoich pasków i naszego dolnego menu przy zmianie zakładek */}
       {/* pt: na iPhonie apka z ekranu głównego zaczyna się pod paskiem z godziną i aparatem
@@ -16,6 +18,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <BottomNav />
+      </CzatProvider>
     </LiveQuotesProvider>
   );
 }
