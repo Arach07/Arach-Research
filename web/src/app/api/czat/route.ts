@@ -51,7 +51,9 @@ export async function POST(request: Request) {
     kierunek: p.kierunek,
     nazwa: p.nazwa,
     teraz: p.zmiany.teraz?.zmiana ?? null,
+    rynekTeraz: p.zmiany.teraz?.rynek ?? null,
     d7: p.zmiany.d7?.zmiana ?? null,
+    benchmark: p.benchmark,
   }));
   const kontekst = zbudujKontekst({ latest: raporty.latest, live, pomysly: pomyslyKontekst, focus });
 

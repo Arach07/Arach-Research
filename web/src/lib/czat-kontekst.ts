@@ -24,8 +24,34 @@ export type PomyslWKontekscie = {
   kierunek: 1 | -1;
   nazwa: string | null;
   teraz: number | null; // zmiana od pomysłu do dziś (%)
+  rynekTeraz: number | null; // zmiana rynku (WIG20 / S&P 500) w tym samym czasie
   d7: number | null;
+  benchmark: string | null;
 };
+
+// Bilans pomysłów (jak na stronie "Wyniki pomysłów"), żeby AI analizowało liczby, a nie "wyczuwało" z listy
+function bilansPomyslow(pomysly: PomyslWKontekscie[]) {
+  const zWynikiem = pomysly.filter((p) => p.teraz != null);
+  if (!zWynikiem.length) return "Brak pomysłów z policzonym wynikiem.";
+  const wynik = (p: PomyslWKontekscie) => p.kierunek * p.teraz!;
+  const trafione = zWynikiem.filter((p) => wynik(p) > 0).length;
+  const sredni = zWynikiem.reduce((s, p) => s + wynik(p), 0) / zWynikiem.length;
+  const zRynkiem = zWynikiem.filter((p) => p.rynekTeraz != null);
+  const rynek = zRynkiem.length ? zRynkiem.reduce((s, p) => s + p.kierunek * p.rynekTeraz!, 0) / zRynkiem.length : null;
+  const lepsze = zRynkiem.filter((p) => wynik(p) > p.kierunek * p.rynekTeraz!).length;
+  const posortowane = [...zWynikiem].sort((a, b) => wynik(b) - wynik(a));
+  const opis = (p: PomyslWKontekscie) =>
+    `${p.nazwa ?? "?"} (${p.kierunek === -1 ? "↓" : "↑"}, ${kiedy(p.created_at)}): ${proc(p.teraz)}`;
+  const daty = pomysly.map((p) => new Date(p.created_at).getTime());
+  const dni = Math.max(1, Math.round((Date.now() - Math.min(...daty)) / 864e5));
+  return [
+    `Pierwszy pomysł: ${kiedy(new Date(Math.min(...daty)).toISOString())} — dane zbierane od ok. ${dni} dni (bardzo krótko na ocenę skuteczności, jeśli to mniej niż kilka tygodni).`,
+    `Pomysłów z wynikiem: ${zWynikiem.length}. W zapowiadanym kierunku: ${trafione} z ${zWynikiem.length} (↑ = kurs rośnie, ↓ = kurs spada).`,
+    `Średni wynik (w kierunku pomysłu): ${proc(sredni)}${rynek != null ? `; rynek w tym samym czasie: ${proc(rynek)}; lepiej niż rynek: ${lepsze} z ${zRynkiem.length}` : ""}.`,
+    `Najlepszy: ${opis(posortowane[0])}. Najsłabszy: ${opis(posortowane[posortowane.length - 1])}.`,
+    "Uwaga: pomysły sprzed 29.09 wieczór nie miały oznaczenia kierunku i są liczone jako ↑ (szansa na wzrost).",
+  ].join("\n");
+}
 
 const kiedy = (iso: string) =>
   new Date(iso).toLocaleString("pl-PL", { timeZone: TZ, weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -135,13 +161,16 @@ export function zbudujKontekst({
 
   if (pomysly.length) {
     bloki.push(
-      "=== POMYSŁY Z RAPORTÓW I ICH WYNIKI (najnowsze na górze) ===\n" +
+      "=== POMYSŁY Z RAPORTÓW: BILANS ===\n" +
+        bilansPomyslow(pomysly) +
+        "\n\n=== POMYSŁY: LISTA (najnowsze na górze; ten sam pomysł powtórzony w kolejnych raportach liczony raz) ===\n" +
         pomysly
-          .slice(0, 12)
+          .slice(0, 30)
           .map(
             (p) =>
               `- ${kiedy(p.created_at)} ${p.kierunek === -1 ? "↓ ostrzeżenie" : "↑ szansa"}${p.nazwa ? ` — ${p.nazwa}` : ""}: ${p.tekst.replace(/\s*\[\d+\]/g, "")}` +
               (p.teraz != null ? ` | od pomysłu do dziś ${proc(p.teraz)}` : "") +
+              (p.rynekTeraz != null && p.benchmark ? ` | ${p.benchmark} w tym czasie ${proc(p.rynekTeraz)}` : "") +
               (p.d7 != null ? ` | po 7 dniach ${proc(p.d7)}` : ""),
           )
           .join("\n"),
@@ -168,6 +197,7 @@ Zasady:
 - Szanuj STAN RYNKÓW: o sesji zamkniętej pisz jako o wyniku, o trwającej „w trakcie sesji”, przy danych z poprzedniej sesji podaj jej dzień.
 - Przy informacjach z newsów podawaj portal, np. „według bankier.pl”.
 - Pisz prosto i konkretnie: zwykle 2–6 zdań albo krótka lista z punktami zaczynającymi się od „- ”. Bez nagłówków i bez znaczników formatowania (** , #).
+- Pytania o pomysły z raportów (czy się sprawdzają, wnioski): oprzyj się na sekcji POMYSŁY — BILANS i podaj konkretne liczby: ile pomysłów, ile w zapowiadanym kierunku, średni wynik vs rynek w tym samym czasie, najlepszy i najsłabszy. Rozróżniaj ↑ (szansa na wzrost) od ↓ (ostrzeżenie). Na koniec uczciwie oceń wiarygodność: przy kilku dniach danych to jeszcze nie dowód skuteczności (szum rynkowy); prawdziwą ocenę dadzą wyniki po 7 i 30 dniach.
 - Nie doradzasz kupna ani sprzedaży. Możesz wyjaśniać, porównywać i wskazywać ryzyka. Gdy pytanie dotyczy decyzji (kupić, sprzedać, zainwestować), zacznij odpowiedź od zdania: „Nie doradzam kupna ani sprzedaży, ale oto, co mówią dane:” i pokaż argumenty za i przeciw. W pozostałych odpowiedziach nie dodawaj zastrzeżeń (aplikacja pokazuje je na stałe).
 
 Teraz jest ${teraz.toLocaleString("pl-PL", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.
