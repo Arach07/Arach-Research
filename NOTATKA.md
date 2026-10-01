@@ -198,7 +198,7 @@ Apka jest w finalnej formie (kamień milowy 30.09, wygląd na telefonie OK). Now
 
 **▶️ NASTĘPNE DO ZROBIENIA (po weekendowych raportach, ustalone 01.10):**
 - **💬 Czat AI w apce** — ustalenia z 01.10:
-  - **Wygląd:** mały uchwyt ze strzałką przy prawej krawędzi ekranu, w złotej ramce jak reszta apki → po stuknięciu okno czatu wysuwa się od dołu (ok. 85% ekranu, zamykanie ✕ albo gestem w dół), gotowe pytania do stuknięcia, pole do pisania nad klawiaturą. Na komputerze może być panel z prawej. Pod każdym raportem link „💬 Zapytaj o ten raport”.
+  - **Wygląd:** mały uchwyt ze strzałką ‹ przy prawej krawędzi ekranu, w złotej ramce jak reszta apki → po stuknięciu panel czatu **wysuwa się z prawej** (animacja, ok. 85% szerokości, pełna wysokość z odstępem od paska z aparatem i dołu iPhone'a, reszta ekranu przyciemniona); zamykanie ✕, przesunięciem w prawo albo stuknięciem w przyciemnioną część. Gotowe pytania do stuknięcia, pole do pisania nad klawiaturą. Na komputerze ten sam panel, węższy. Pod każdym raportem link „💬 Zapytaj o ten raport”.
   - **Rozmowa:** prawdziwa konwersacja (AI pamięta wcześniejsze pytania), jeden czat dla całej apki; na start znika po zamknięciu apki (zapis w bazie ewentualnie później).
   - **Co wie:** dane z najnowszych raportów ze wszystkich zakładek (Dziś, Rynki: przegląd/spółki/makro/kalendarz, Scamy, wyniki pomysłów) + aktualne kursy na żywo — niezależnie od strony, na której jestem. Nie zna starszych raportów z Archiwum ani spółek spoza listy (wtedy odpowiada z wiedzy ogólnej i to zaznacza). Zawsze dopisek „informacja, nie porada inwestycyjna”.
   - **Limity:** osobny klucz Gemini z **osobnego projektu** AI Studio (pytania nie zjadają limitu raportów n8n) + limit w apce ok. 30 pytań dziennie.
