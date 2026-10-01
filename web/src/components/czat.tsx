@@ -192,6 +192,22 @@ function Panel({
   const lista = useRef<HTMLDivElement>(null);
   const pole = useRef<HTMLTextAreaElement>(null);
   const dotyk = useRef<{ x: number; y: number } | null>(null);
+  // Klawiatura iPhone'a: o ile podnieść panel i ile miejsca zostaje nad klawiaturą
+  const [klawiatura, setKlawiatura] = useState({ dol: 0, wysokosc: 0 });
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!otwarty || !vv) return;
+    const policz = () =>
+      setKlawiatura({ dol: Math.max(0, window.innerHeight - vv.height - vv.offsetTop), wysokosc: vv.height });
+    policz();
+    vv.addEventListener("resize", policz);
+    vv.addEventListener("scroll", policz);
+    return () => {
+      vv.removeEventListener("resize", policz);
+      vv.removeEventListener("scroll", policz);
+    };
+  }, [otwarty]);
 
   // Nowa treść → przewiń na dół rozmowy
   useEffect(() => {
@@ -247,10 +263,14 @@ function Panel({
         aria-label="Czat AI"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className={`absolute inset-y-0 right-0 flex w-[86vw] max-w-[420px] flex-col border-l border-line-strong bg-background shadow-2xl shadow-black/70 transition-transform duration-300 ease-out ${
+        // 60% wysokości ekranu, przy dolnej krawędzi (w zasięgu kciuka); przy klawiaturze — nad nią
+        className={`absolute right-0 flex w-[86vw] max-w-[420px] flex-col overflow-hidden rounded-l-3xl border border-r-0 border-line-strong bg-background shadow-2xl shadow-black/70 transition-transform duration-300 ease-out ${
           otwarty ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{
+          bottom: klawiatura.dol > 0 ? klawiatura.dol + 8 : "calc(env(safe-area-inset-bottom) + 0.75rem)",
+          height: klawiatura.wysokosc ? `min(60dvh, ${klawiatura.wysokosc - 24}px)` : "60dvh",
+        }}
       >
         <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
           <div className="min-w-0">
