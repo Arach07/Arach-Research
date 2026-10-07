@@ -217,7 +217,8 @@ const RSS = {
   comparic: 'https://comparic.pl/feed/',
   cnbc: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
   marketwatch: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
-  yahoo: 'https://finance.yahoo.com/news/rssindex',
+  // Ogólny kanał Yahoo (news/rssindex) zniknął 10.2026 (404) — newsy powiązane z indeksami USA
+  yahoo: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EDJI,%5EIXIC&region=US&lang=en-US',
   coindesk: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
   cointelegraph: 'https://cointelegraph.com/rss',
   cert: 'https://cert.pl/feed/',
