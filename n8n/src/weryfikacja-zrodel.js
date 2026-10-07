@@ -88,6 +88,8 @@ function liczby(tekst) {
     // Wszystkie sensowne odczyty liczby: angielskie "1,665" / "300,000" to tysiące, a nie ułamek
     const wartosci = [wartosc];
     if (/^\d{1,3}(,\d{3})+$/.test(cyfry)) wartosci.push(Number(cyfry.replace(/,/g, '')));
+    // Polski zapis z kropką jako separatorem tysięcy: "506.592 akcji" (Bankier) = 506 592
+    if (/^\d{1,3}(\.\d{3})+$/.test(cyfry)) wartosci.push(Number(cyfry.replace(/\./g, '')));
     const mnoznik = MNOZNIKI.find(([re]) => re.test(po))?.[1];
     if (mnoznik) wartosci.push(...wartosci.map((w) => w * mnoznik));
     return {

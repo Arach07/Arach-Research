@@ -910,6 +910,17 @@ const pomyslyTekst = pomyslyTygodnia.length
           `${fmtDzien(dzienW(new Date(p.t).getTime()))} ${p.kierunek === -1 ? '↓ ostrzeżenie' : '↑ szansa'} — ${p.nazwa}: od pomysłu ${fmtPct(p.zmiana)} → ${p.zmiana == null ? 'brak ceny' : p.trafiony ? 'zgodnie z kierunkiem' : 'wbrew kierunkowi'}`,
       ),
       `Razem: ${pomyslyTygodnia.filter((p) => p.trafiony).length} z ${pomyslyTygodnia.filter((p) => p.zmiana != null).length} zgodnie z kierunkiem`,
+      ...(() => {
+        // Wynik "w kierunku pomysłu": dla ↓ spadek kursu to plus
+        const zWynikiem = pomyslyTygodnia.filter((p) => p.zmiana != null).map((p) => ({ ...p, w: p.kierunek * p.zmiana }));
+        if (!zWynikiem.length) return [];
+        const sorted = [...zWynikiem].sort((a, b) => b.w - a.w);
+        const opisz = (p) => `${p.nazwa} (${p.kierunek === -1 ? '↓' : '↑'}) ${fmtPct(p.w)}`;
+        return [
+          `Średni wynik w kierunku pomysłu: ${fmtPct(zWynikiem.reduce((s, p) => s + p.w, 0) / zWynikiem.length)}`,
+          `Najlepszy: ${opisz(sorted[0])}; najsłabszy: ${opisz(sorted[sorted.length - 1])}`,
+        ];
+      })(),
     ]
   : ['Brak zapisanych pomysłów z tego tygodnia (statystyka dopiero się zbiera).'];
 const statTygodnia = (pamiec.statystyki ?? []).filter((x) => Date.now() - new Date(x.t).getTime() < TYDZIEN_MS);
@@ -981,6 +992,7 @@ const RAPORT_SOBOTA = {
     '— SPÓŁKI TYGODNIA —', ...spolkiTygodnia,
     '— POMYSŁY Z TYGODNIA (cena przy pomyśle → teraz) —', ...pomyslyTekst,
     '— KONTROLA AI W TYGODNIU —', ...kontrolaTekst,
+    '— WYNIKI SPÓŁEK W NADCHODZĄCYM TYGODNIU —', ...(wynikiWTygodniu.length ? wynikiWTygodniu : ['żadna ze śledzonych spółek nie publikuje wyników']),
     '— MAKRO —', ...makroSkrot,
   ],
   prompt: `PODSUMOWANIE TYGODNIA dla inwestora indywidualnego (sobota; giełdy są zamknięte od piątku — pisz o minionym tygodniu, czasem przeszłym; ok. 400-700 słów). ${SEKCJE_ZASADA}
@@ -996,9 +1008,9 @@ Pod nazwą sekcji: 2-4 punkty zaczynające się od "- ".
 - "Rynki w tym tygodniu" — zmiany tygodniowe indeksów, złota, srebra, walut i krypto z TYDZIEŃ NA RYNKACH (liczby) i co je napędzało (newsy ze źródłami).
 - "Spółki tygodnia" — najmocniejsze i najsłabsze spółki tygodnia (SPÓŁKI TYGODNIA) i powody z newsów.
 - "Najważniejsze wydarzenia" — 3-5 punktów z newsów, z numerami źródeł.
-- "Wyniki pomysłów" — na podstawie POMYSŁY Z TYGODNIA: które poszły zgodnie z zapowiadanym kierunkiem, a które nie; uczciwie, z liczbami. Jeśli brak danych — napisz, że statystyka dopiero się zbiera.
+- "Wyniki pomysłów" — na podstawie POMYSŁY Z TYGODNIA: bilans (ile zgodnie z kierunkiem), średni wynik, najlepszy i najsłabszy z nazwą i liczbą, a potem wymień, które pomysły się sprawdziły, a które nie (z liczbami). Rozróżniaj ↑ szansę od ↓ ostrzeżenia. Na koniec 1 zdanie uczciwej oceny: tydzień to krótko, to jeszcze nie dowód skuteczności. Jeśli brak danych — napisz, że statystyka dopiero się zbiera.
 - "Kontrola jakości" — 1 punkt z KONTROLA AI W TYGODNIU.
-- "Co dalej" — 1-2 punkty: na co patrzeć w przyszłym tygodniu (szczegółowy kalendarz będzie w niedzielnym raporcie).
+- "Co dalej" — 1-3 konkretne punkty: na co patrzeć w przyszłym tygodniu (WYNIKI SPÓŁEK W NADCHODZĄCYM TYGODNIU, poziomy i trendy z danych, ryzyka z newsów); pełny kalendarz będzie w niedzielnym raporcie.
 ${STOPKA}`,
 };
 

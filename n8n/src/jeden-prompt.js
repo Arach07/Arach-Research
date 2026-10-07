@@ -45,7 +45,7 @@ ${zasadyCzasu.map((l) => '- ' + l).join('\n')}
 - Krypto (Bitcoin, Ethereum) handluje się bez przerwy — nie pisz przy nich o "sesji".
 - Przy liczbach z TWARDYCH DANYCH nie dopisuj źródła w nawiasie (żadnych "[dane]", "[twarde dane]") — nawiasy kwadratowe tylko z numerem newsa, np. [3].${
         weekend
-          ? '\nWeekend: giełdy nie działają (poza krypto). W komentarzach do tematów pisz o minionym tygodniu i zmianach tygodniowych, a nie o "dzisiejszej sesji".'
+          ? '\nWeekend: giełdy nie działają (poza krypto). W komentarzach do tematów pisz o minionym tygodniu i zmianach tygodniowych, a nie o "dzisiejszej sesji". Zmiana "dzień" przy giełdach, złocie i walutach to wynik ostatniej sesji (zwykle piątkowej) — pisz "w piątek", nigdy "dzisiaj".'
           : ''
       }
 
