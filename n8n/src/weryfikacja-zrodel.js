@@ -65,7 +65,8 @@ if (start >= 0 && koniec > start) {
 // Sprawdzamy też kierunek: "wzrost o 2,5%" przy danych "-2,5%" to błąd.
 
 // Liczba: "4 194,90", "-3,28", "0.3", "83879", "$300,000" (spacja/nbsp jako separator tysięcy)
-const LICZBA = /[-+−]?\d{1,3}(?:[   ]\d{3})+(?:,\d+)?|[-+−]?\d+(?:[.,]\d+)?/g;
+// oraz "32.299.946" / "1,480,304" (kilka grup tysięcy z kropką lub przecinkiem — Bankier, newsy po angielsku)
+const LICZBA = /[-+−]?\d{1,3}(?:[   ]\d{3})+(?:,\d+)?|[-+−]?\d{1,3}(?:[.,]\d{3}){2,}|[-+−]?\d+(?:[.,]\d+)?/g;
 // Mnożnik po liczbie: "84K", "300 million", "2,6 mld", "130 tysięcy"
 const MNOZNIKI = [
   [/^\s?(tys|tysi|thousand)/i, 1e3],
@@ -83,8 +84,10 @@ function liczby(tekst) {
     const po = tekst.slice(m.index + surowa.length, m.index + surowa.length + 12);
     const znak = /^[-−]/.test(surowa) ? -1 : surowa.startsWith('+') ? 1 : 0;
     const cyfry = surowa.replace(/^[-+−]/, '').replace(/[   ]/g, '');
-    const [, ulamek = ''] = cyfry.split(/[.,]/);
-    const wartosc = Number(cyfry.replace(',', '.'));
+    // Kilka grup tysięcy ("32.299.946") to liczba całkowita, a nie ułamek
+    const grupyTysiecy = /^\d{1,3}([.,]\d{3}){2,}$/.test(cyfry);
+    const [, ulamek = ''] = grupyTysiecy ? [cyfry, ''] : cyfry.split(/[.,]/);
+    const wartosc = grupyTysiecy ? Number(cyfry.replace(/[.,]/g, '')) : Number(cyfry.replace(',', '.'));
     // Wszystkie sensowne odczyty liczby: angielskie "1,665" / "300,000" to tysiące, a nie ułamek
     const wartosci = [wartosc];
     if (/^\d{1,3}(,\d{3})+$/.test(cyfry)) wartosci.push(Number(cyfry.replace(/,/g, '')));

@@ -1,0 +1,8 @@
+{
+  "name": "research-narzedzia",
+  "private": true,
+  "description": "Narzędzia do testów i diagnostyki projektu Research (n8n + apka). Instalacja: npm install w tym folderze.",
+  "dependencies": {
+    "flatted": "^3.3.3"
+  }
+}

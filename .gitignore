@@ -4,3 +4,6 @@ Agents/
 node_modules/
 .env*
 !.env.local.example
+
+# Narzędzia: zależności i wyniki testów (odtwarzalne)
+narzedzia/dane/
